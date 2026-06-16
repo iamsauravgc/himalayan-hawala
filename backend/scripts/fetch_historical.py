@@ -12,49 +12,54 @@ load_dotenv()
 
 NRB_API_URL = os.getenv("NRB_API_URL")
 
-def fetch_historical(from_date, to_date):
+def fetch_chunk(from_date, to_date):
     url = f"{NRB_API_URL}/rates?from={from_date}&to={to_date}&per_page=100&page=1"
-    
-    response = requests.get(url)
-    data = response.json()
-    
-    payload = data.get("data", {}).get("payload", [])
-    total_pages = data.get("data", {}).get("pagination", {}).get("pages", 1)
-    
-    all_days = payload.copy()
-    
-    for page in range(2, total_pages + 1):
-        r = requests.get(f"{url}&page={page}")
-        d = r.json()
-        all_days += d.get("data", {}).get("payload", [])
-        print(f"Fetched page {page}/{total_pages}")
-    
+    r = requests.get(url)
+    data = r.json()
+    return data.get("data", {}).get("payload", []) or []
+
+def fetch_historical():
     conn = get_connection()
     cur = conn.cursor()
     count = 0
 
-    for day in all_days:
-        day_date = day.get("date")
-        for rate in day.get("rates", []):
-            currency = rate.get("currency", {}).get("iso3", "")
-            buy = rate.get("buy")
-            sell = rate.get("sell")
-            mid = round((float(buy) + float(sell)) / 2, 4) if buy and sell else None
+    end = date.today()
+    start = end - timedelta(days=730)
 
-            cur.execute("""
-                INSERT INTO exchange_rates (currency, buy_rate, sell_rate, mid_rate, recorded_at)
-                VALUES (%s, %s, %s, %s, %s)
-                ON CONFLICT DO NOTHING
-            """, (currency, buy, sell, mid, day_date))
-            count += 1
+    # fetch in 90-day chunks
+    chunk_start = start
+    while chunk_start < end:
+        chunk_end = min(chunk_start + timedelta(days=90), end)
+        print(f"Fetching {chunk_start} to {chunk_end}...")
+
+        payload = fetch_chunk(
+            chunk_start.strftime("%Y-%m-%d"),
+            chunk_end.strftime("%Y-%m-%d")
+        )
+
+        for day in payload:
+            day_date = day.get("date")
+            for rate in day.get("rates", []):
+                currency = rate.get("currency", {}).get("iso3", "")
+                buy = rate.get("buy")
+                sell = rate.get("sell")
+                if not buy or not sell:
+                    continue
+                mid = round((float(buy) + float(sell)) / 2, 4)
+
+                cur.execute("""
+                    INSERT INTO exchange_rates (currency, buy_rate, sell_rate, mid_rate, recorded_at)
+                    VALUES (%s, %s, %s, %s, %s)
+                    ON CONFLICT DO NOTHING
+                """, (currency, buy, sell, mid, day_date))
+                count += 1
+
+        chunk_start = chunk_end + timedelta(days=1)
 
     conn.commit()
     cur.close()
     conn.close()
-    print(f"Done. Stored {count} rate records.")
+    print(f"Done. Total records stored: {count}")
 
 if __name__ == "__main__":
-    to_date = date.today().strftime("%Y-%m-%d")
-    from_date = (date.today() - timedelta(days=730)).strftime("%Y-%m-%d")
-    print(f"Fetching from {from_date} to {to_date}...")
-    fetch_historical(from_date, to_date)
+    fetch_historical()
