@@ -1,0 +1,107 @@
+import sys
+import os
+import pickle
+import pandas as pd
+from datetime import date, timedelta
+from sqlalchemy import create_engine
+from dotenv import load_dotenv
+
+load_dotenv()
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
+from db.connection import get_connection
+
+def get_engine():
+    host = os.getenv("DB_HOST")
+    port = os.getenv("DB_PORT")
+    name = os.getenv("DB_NAME")
+    user = os.getenv("DB_USER")
+    password = os.getenv("DB_PASSWORD")
+    return create_engine(f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{name}")
+
+def load_recent_usd():
+    engine = get_engine()
+    query = """
+        SELECT mid_rate, recorded_at 
+        FROM exchange_rates 
+        WHERE currency = 'USD'
+        AND mid_rate IS NOT NULL
+        ORDER BY recorded_at ASC
+    """
+    df = pd.read_sql(query, engine)
+    df['recorded_at'] = pd.to_datetime(df['recorded_at'])
+    df = df.drop_duplicates(subset='recorded_at').sort_values('recorded_at')
+    df = df.set_index('recorded_at').resample('D').ffill().reset_index()
+    return df
+
+def make_features(df):
+    df['day_of_week'] = df['recorded_at'].dt.dayofweek
+    df['month'] = df['recorded_at'].dt.month
+    df['lag_1'] = df['mid_rate'].shift(1)
+    df['lag_2'] = df['mid_rate'].shift(2)
+    df['lag_3'] = df['mid_rate'].shift(3)
+    df['lag_7'] = df['mid_rate'].shift(7)
+    df['rolling_3'] = df['mid_rate'].rolling(3).mean()
+    df['rolling_7'] = df['mid_rate'].rolling(7).mean()
+    df['delta_1'] = df['mid_rate'].diff(1)
+    df['delta_3'] = df['mid_rate'].diff(3)
+    df['delta_7'] = df['mid_rate'].diff(7)
+    return df
+
+def run_predictions():
+    model_path = os.path.join(os.path.dirname(__file__), '..', 'ml', 'model.pkl')
+    with open(model_path, 'rb') as f:
+        saved = pickle.load(f)
+    model = saved['model']
+    features = saved['features']
+
+    df = load_recent_usd()
+    predictions = []
+    current_rate = df['mid_rate'].iloc[-1]
+
+    for i in range(7):
+        df = make_features(df)
+        last_row = df.iloc[[-1]][features]
+        delta = model.predict(last_row)[0]
+        next_rate = round(current_rate + delta, 4)
+        next_date = df['recorded_at'].iloc[-1] + timedelta(days=1)
+
+        # confidence interval ±0.5 NPR
+        conf_low = round(next_rate - 0.5, 4)
+        conf_high = round(next_rate + 0.5, 4)
+
+        predictions.append({
+            'date': next_date,
+            'rate': next_rate,
+            'conf_low': conf_low,
+            'conf_high': conf_high
+        })
+
+        # append predicted row for next iteration
+        new_row = pd.DataFrame([{
+            'recorded_at': next_date,
+            'mid_rate': next_rate
+        }])
+        df = pd.concat([df, new_row], ignore_index=True)
+        current_rate = next_rate
+
+    # store in db
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("DELETE FROM rate_predictions WHERE predicted_for >= %s", (date.today(),))
+
+    for p in predictions:
+        cur.execute("""
+            INSERT INTO rate_predictions (predicted_for, predicted_rate, confidence_low, confidence_high)
+            VALUES (%s, %s, %s, %s)
+        """, (p['date'].date(), float(p['rate']), float(p['conf_low']), float(p['conf_high'])))
+        print(f"{p['date'].date()} → {p['rate']} NPR (±0.5)")
+
+    conn.commit()
+    cur.close()
+    conn.close()
+    print("Predictions stored.")
+
+if __name__ == "__main__":
+    run_predictions()
