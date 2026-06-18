@@ -21,112 +21,50 @@ const CSS = `
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    background: var(--navy);
-    color: var(--white);
-    font-family: 'DM Mono', monospace;
-  }
-
+  body { background: var(--navy); color: var(--white); font-family: 'DM Mono', monospace; }
   .app { min-height: 100vh; padding: 48px; max-width: 1200px; margin: 0 auto; }
-
   .header { border-bottom: 1px solid var(--gold-dim); padding-bottom: 24px; margin-bottom: 48px; }
-
-  .brand {
-    font-family: 'DM Serif Display', serif;
-    font-size: 28px;
-    letter-spacing: -0.5px;
-    color: var(--white);
-  }
-
+  .brand { font-family: 'DM Serif Display', serif; font-size: 28px; letter-spacing: -0.5px; color: var(--white); }
   .brand span { color: var(--gold); }
-
   .tagline { color: var(--muted); font-size: 11px; letter-spacing: 3px; text-transform: uppercase; margin-top: 4px; }
-
   .grid { display: grid; grid-template-columns: 300px 1fr; gap: 24px; margin-bottom: 24px; }
-
-  .card {
-    background: var(--navy-2);
-    border: 1px solid var(--navy-3);
-    border-top: 2px solid var(--gold);
-    padding: 28px;
-  }
-
+  .card { background: var(--navy-2); border: 1px solid var(--navy-3); border-top: 2px solid var(--gold); padding: 28px; }
   .card-label { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; }
-
-  .rate-big {
-    font-family: 'DM Mono', monospace;
-    font-size: 52px;
-    font-weight: 300;
-    color: var(--gold);
-    line-height: 1;
-    letter-spacing: -2px;
-  }
-
+  .rate-big { font-family: 'DM Mono', monospace; font-size: 52px; font-weight: 300; color: var(--gold); line-height: 1; letter-spacing: -2px; }
   .rate-sub { display: flex; gap: 24px; margin-top: 12px; font-size: 11px; color: var(--muted); }
-
   .rate-sub span { color: var(--white); }
-
   .as-of { font-size: 10px; color: var(--muted); margin-top: 16px; border-top: 1px solid var(--navy-3); padding-top: 12px; }
-
-  .signal {
-    margin-top: 20px;
-    padding: 12px;
-    background: var(--navy-3);
-    font-size: 11px;
-    color: var(--muted);
-    line-height: 1.6;
-  }
-
+  .signal { margin-top: 20px; padding: 12px; background: var(--navy-3); font-size: 11px; color: var(--muted); line-height: 1.6; }
   .signal strong { color: var(--gold); }
-
-  .chart-card {
-    background: var(--navy-2);
-    border: 1px solid var(--navy-3);
-    border-top: 2px solid var(--gold-dim);
-    padding: 28px;
-  }
-
+  .chart-card { background: var(--navy-2); border: 1px solid var(--navy-3); border-top: 2px solid var(--gold-dim); padding: 28px; }
   .chart-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; }
-
   .chart-title { font-family: 'DM Serif Display', serif; font-size: 18px; color: var(--white); }
-
   .chart-sub { font-size: 10px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-top: 4px; }
-
-  .badge {
-    font-size: 9px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    padding: 4px 10px;
-    border: 1px solid var(--gold-dim);
-    color: var(--gold);
-  }
-
-  .custom-tooltip {
-    background: var(--navy-3);
-    border: 1px solid var(--gold-dim);
-    padding: 12px 16px;
-    font-size: 11px;
-  }
-
+  .badge { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; padding: 4px 10px; border: 1px solid var(--gold-dim); color: var(--gold); }
+  .custom-tooltip { background: var(--navy-3); border: 1px solid var(--gold-dim); padding: 12px 16px; font-size: 11px; }
   .custom-tooltip .label { color: var(--muted); margin-bottom: 4px; font-size: 10px; letter-spacing: 1px; }
   .custom-tooltip .value { color: var(--gold); font-size: 16px; }
-
-  .table-card {
-    background: var(--navy-2);
-    border: 1px solid var(--navy-3);
-    padding: 28px;
-  }
-
+  .table-card { background: var(--navy-2); border: 1px solid var(--navy-3); padding: 28px; margin-bottom: 24px; }
   .table-title { font-family: 'DM Serif Display', serif; font-size: 18px; margin-bottom: 20px; }
-
   table { width: 100%; border-collapse: collapse; font-size: 12px; }
   th { text-align: left; color: var(--muted); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; padding: 8px 0; border-bottom: 1px solid var(--navy-3); font-weight: 400; }
   td { padding: 12px 0; border-bottom: 1px solid var(--navy-3); color: var(--white); }
   tr:last-child td { border-bottom: none; }
-
   .up { color: var(--positive); }
   .down { color: var(--negative); }
+  .sentiment-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .sentiment-card { background: var(--navy-2); border: 1px solid var(--navy-3); padding: 20px; }
+  .sentiment-num { font-size: 32px; font-weight: 300; margin-top: 8px; }
+  .news-list { margin-top: 8px; }
+  .news-item { padding: 12px 0; border-bottom: 1px solid var(--navy-3); font-size: 11px; line-height: 1.5; }
+  .news-item:last-child { border-bottom: none; }
+  .news-meta { display: flex; gap: 12px; margin-top: 4px; color: var(--muted); font-size: 10px; }
+  .pill { padding: 2px 8px; font-size: 9px; letter-spacing: 1px; text-transform: uppercase; }
+  .pill-positive { background: #1a3a2a; color: var(--positive); }
+  .pill-negative { background: #3a1a1a; color: var(--negative); }
+  .pill-neutral { background: var(--navy-3); color: var(--muted); }
+  .signal-banner { padding: 16px 20px; margin-bottom: 24px; border-left: 3px solid var(--gold); background: var(--navy-2); font-size: 12px; line-height: 1.6; }
+  .signal-banner strong { color: var(--gold); display: block; margin-bottom: 4px; font-size: 10px; letter-spacing: 2px; }
 `;
 
 const CustomTooltip = ({ active, payload, label }) => {
@@ -145,11 +83,15 @@ export default function Dashboard() {
   const [liveRate, setLiveRate] = useState(null);
   const [predictions, setPredictions] = useState([]);
   const [transfers, setTransfers] = useState([]);
+  const [sentimentSummary, setSentimentSummary] = useState(null);
+  const [news, setNews] = useState([]);
 
   useEffect(() => {
     fetch("http://localhost:8000/api/rates/live").then(r => r.json()).then(setLiveRate);
     fetch("http://localhost:8000/api/predict/").then(r => r.json()).then(setPredictions);
     fetch("http://localhost:8000/api/transfers/Ramesh Thapa").then(r => r.json()).then(d => setTransfers(d.slice(0, 6)));
+    fetch("http://localhost:8000/api/sentiment/summary").then(r => r.json()).then(setSentimentSummary);
+    fetch("http://localhost:8000/api/sentiment/").then(r => r.json()).then(d => setNews(d.slice(0, 8)));
   }, []);
 
   const chartData = predictions.map(p => ({
@@ -171,6 +113,14 @@ export default function Dashboard() {
           <div className="brand">Himalayan<span>Hawala</span></div>
           <div className="tagline">Remittance Intelligence · Nepal</div>
         </header>
+
+        {/* Sentiment Banner */}
+        {sentimentSummary && (
+          <div className="signal-banner">
+            <strong>MARKET SIGNAL · {sentimentSummary.signal}</strong>
+            {sentimentSummary.explanation}
+          </div>
+        )}
 
         <div className="grid">
           {/* Live Rate */}
@@ -214,6 +164,41 @@ export default function Dashboard() {
                 <Line type="monotone" dataKey="low" stroke="#8A6D2F" strokeDasharray="3 3" dot={false} strokeWidth={1} />
               </LineChart>
             </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Sentiment Breakdown */}
+        {sentimentSummary && (
+          <div className="sentiment-grid">
+            <div className="sentiment-card">
+              <div className="card-label">Positive News</div>
+              <div className="sentiment-num up">{sentimentSummary.breakdown.positive || 0}</div>
+            </div>
+            <div className="sentiment-card">
+              <div className="card-label">Negative News</div>
+              <div className="sentiment-num down">{sentimentSummary.breakdown.negative || 0}</div>
+            </div>
+            <div className="sentiment-card">
+              <div className="card-label">Neutral News</div>
+              <div className="sentiment-num" style={{ color: "var(--muted)" }}>{sentimentSummary.breakdown.neutral || 0}</div>
+            </div>
+          </div>
+        )}
+
+        {/* News Feed */}
+        <div className="table-card">
+          <div className="table-title">Financial News Sentiment</div>
+          <div className="news-list">
+            {news.map((item, i) => (
+              <div className="news-item" key={i}>
+                <div>{item.headline}</div>
+                <div className="news-meta">
+                  <span>{item.source}</span>
+                  <span className={`pill pill-${item.sentiment}`}>{item.sentiment}</span>
+                  <span>{item.sentiment_score}</span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
