@@ -1,18 +1,14 @@
 from fastapi import APIRouter, Query
-from sqlalchemy import create_engine, text
-from dotenv import load_dotenv
+from sqlalchemy import text
+from db.engine import engine
 import requests
 import os
+
+from dotenv import load_dotenv
 
 load_dotenv()
 
 router = APIRouter()
-
-def get_engine():
-    return create_engine(
-        f"postgresql+psycopg2://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}"
-        f"@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
-    )
 
 def generate_alert_text(currency, live_rate, trend, sentiment_signal):
     prompt = f"""Current {currency}/NPR rate: {live_rate}
@@ -52,8 +48,6 @@ def translate_to_nepali(text):
 
 @router.get("/generate")
 def generate_alert(currency: str = Query("USD", description="Currency code"), lang: str = "en"):
-    engine = get_engine()
-
     with engine.connect() as conn:
         rate_row = conn.execute(text("""
             SELECT mid_rate FROM exchange_rates

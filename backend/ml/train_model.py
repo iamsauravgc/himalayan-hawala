@@ -29,6 +29,7 @@ def get_currencies():
             SELECT currency, COUNT(*) as cnt
             FROM exchange_rates
             WHERE mid_rate IS NOT NULL
+            AND currency != 'INR'
             GROUP BY currency
             HAVING COUNT(*) >= :min_records
             ORDER BY currency

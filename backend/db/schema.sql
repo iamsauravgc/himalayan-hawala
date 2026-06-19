@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS rate_predictions (
 -- News + FinBERT sentiment
 CREATE TABLE IF NOT EXISTS news_sentiment (
   id SERIAL PRIMARY KEY,
-  headline TEXT,
+  headline TEXT UNIQUE,
+  url TEXT,
   source VARCHAR(100),
   sentiment VARCHAR(20),
   sentiment_score DECIMAL(5,4),

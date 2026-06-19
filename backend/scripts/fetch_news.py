@@ -9,10 +9,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 QUERIES = [
-    "Nepal economy dollar",
-    "USD exchange rate Asia",
-    "Nepal remittance economy",
-    "Federal Reserve dollar",
+    "Nepal rupee exchange rate forex",
+    "Nepal remittance NPR dollar",
+    "USD NPR exchange rate forecast",
+    "Federal Reserve interest rate impact Asia",
+    "emerging market currency forex",
+    "Nepal economy trade deficit",
 ]
 
 def fetch_articles():
@@ -33,14 +35,14 @@ def fetch_articles():
         data = r.json()
         if data.get("status") == "ok":
             articles += data.get("articles", [])
-            print(f"'{query}' → {len(data.get('articles', []))} articles")
+            print(f"'{query}' -> {len(data.get('articles', []))} articles")
 
-    # deduplicate by title
     seen = set()
     unique = []
     for a in articles:
-        if a['title'] not in seen:
-            seen.add(a['title'])
+        t = a.get('title', '')
+        if t and t not in seen and t != "[Removed]":
+            seen.add(t)
             unique.append(a)
 
     print(f"Total unique articles: {len(unique)}")
@@ -67,21 +69,27 @@ def store_articles(articles):
 
     for a in articles:
         headline = a.get("title", "")
+        url = a.get("url", "")
         source = a.get("source", {}).get("name", "")
         published_at = a.get("publishedAt")
 
-        if not headline or headline == "[Removed]":
+        if not headline:
             continue
 
-        print(f"Running FinBERT: {headline[:60]}...")
+        print(f"Running FinBERT: {headline[:60].encode('ascii', 'replace').decode()}...")
         sentiment, score = run_finbert(headline)
-        print(f"  → {sentiment} ({score})")
+        print(f"  -> {sentiment} ({score})")
 
         cur.execute("""
-            INSERT INTO news_sentiment (headline, source, sentiment, sentiment_score, published_at)
-            VALUES (%s, %s, %s, %s, %s)
-            ON CONFLICT DO NOTHING
-        """, (headline, source, sentiment, score, published_at))
+            INSERT INTO news_sentiment (headline, url, source, sentiment, sentiment_score, published_at)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            ON CONFLICT (headline) DO UPDATE
+            SET sentiment = EXCLUDED.sentiment,
+                sentiment_score = EXCLUDED.sentiment_score,
+                url = EXCLUDED.url,
+                source = EXCLUDED.source,
+                published_at = EXCLUDED.published_at
+        """, (headline, url, source, sentiment, score, published_at))
         count += 1
 
     conn.commit()

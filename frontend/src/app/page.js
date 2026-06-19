@@ -2,77 +2,112 @@
 import { useEffect, useState } from "react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer
+  Tooltip, ResponsiveContainer, Area, ReferenceLine
 } from "recharts";
 
 const CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Mono:wght@300;400&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
   :root {
-    --navy: #080F1E;
-    --navy-2: #0D1829;
-    --navy-3: #152238;
-    --gold: #C9A84C;
-    --gold-dim: #8A6D2F;
-    --white: #F0EDE6;
-    --muted: #6B7A94;
-    --positive: #4A9D6F;
-    --negative: #9D4A4A;
+    --canvas: #0b0e11;
+    --surface: #1e2329;
+    --surface-elevated: #2b3139;
+    --hairline: #2b3139;
+    --primary: #FCD535;
+    --on-primary: #181a20;
+    --on-dark: #ffffff;
+    --body: #eaecef;
+    --muted: #707a8a;
+    --muted-strong: #929aa5;
+    --trading-up: #0ecb81;
+    --trading-down: #f6465d;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--navy); color: var(--white); font-family: 'DM Mono', monospace; }
-  .app { min-height: 100vh; padding: 48px; max-width: 1200px; margin: 0 auto; }
-  .header { border-bottom: 1px solid var(--gold-dim); padding-bottom: 24px; margin-bottom: 48px; }
-  .brand { font-family: 'DM Serif Display', serif; font-size: 28px; letter-spacing: -0.5px; color: var(--white); }
-  .brand span { color: var(--gold); }
-  .tagline { color: var(--muted); font-size: 11px; letter-spacing: 3px; text-transform: uppercase; margin-top: 4px; }
-  .grid { display: grid; grid-template-columns: 300px 1fr; gap: 24px; margin-bottom: 24px; }
-  .card { background: var(--navy-2); border: 1px solid var(--navy-3); border-top: 2px solid var(--gold); padding: 28px; }
-  .card-label { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; }
-  .rate-big { font-family: 'DM Mono', monospace; font-size: 52px; font-weight: 300; color: var(--gold); line-height: 1; letter-spacing: -2px; }
-  .rate-sub { display: flex; gap: 24px; margin-top: 12px; font-size: 11px; color: var(--muted); }
-  .rate-sub span { color: var(--white); }
-  .as-of { font-size: 10px; color: var(--muted); margin-top: 16px; border-top: 1px solid var(--navy-3); padding-top: 12px; }
-  .signal { margin-top: 20px; padding: 12px; background: var(--navy-3); font-size: 11px; color: var(--muted); line-height: 1.6; }
-  .signal strong { color: var(--gold); }
-  .chart-card { background: var(--navy-2); border: 1px solid var(--navy-3); border-top: 2px solid var(--gold-dim); padding: 28px; }
-  .chart-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; }
-  .chart-title { font-family: 'DM Serif Display', serif; font-size: 18px; color: var(--white); }
-  .chart-sub { font-size: 10px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-top: 4px; }
-  .badge { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; padding: 4px 10px; border: 1px solid var(--gold-dim); color: var(--gold); }
-  .custom-tooltip { background: var(--navy-3); border: 1px solid var(--gold-dim); padding: 12px 16px; font-size: 11px; }
-  .custom-tooltip .label { color: var(--muted); margin-bottom: 4px; font-size: 10px; letter-spacing: 1px; }
-  .custom-tooltip .value { color: var(--gold); font-size: 16px; }
-  .table-card { background: var(--navy-2); border: 1px solid var(--navy-3); padding: 28px; margin-bottom: 24px; }
-  .table-title { font-family: 'DM Serif Display', serif; font-size: 18px; margin-bottom: 20px; }
-  table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  th { text-align: left; color: var(--muted); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; padding: 8px 0; border-bottom: 1px solid var(--navy-3); font-weight: 400; }
-  td { padding: 12px 0; border-bottom: 1px solid var(--navy-3); color: var(--white); }
-  tr:last-child td { border-bottom: none; }
-  .up { color: var(--positive); }
-  .down { color: var(--negative); }
-  .sentiment-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 24px; }
-  .sentiment-card { background: var(--navy-2); border: 1px solid var(--navy-3); padding: 20px; }
-  .sentiment-num { font-size: 32px; font-weight: 300; margin-top: 8px; }
-  .news-list { margin-top: 8px; }
-  .news-item { padding: 12px 0; border-bottom: 1px solid var(--navy-3); font-size: 11px; line-height: 1.5; }
-  .news-item:last-child { border-bottom: none; }
-  .news-meta { display: flex; gap: 12px; margin-top: 4px; color: var(--muted); font-size: 10px; }
-  .pill { padding: 2px 8px; font-size: 9px; letter-spacing: 1px; text-transform: uppercase; }
-  .pill-positive { background: #1a3a2a; color: var(--positive); }
-  .pill-negative { background: #3a1a1a; color: var(--negative); }
-  .pill-neutral { background: var(--navy-3); color: var(--muted); }
-  .signal-banner { padding: 16px 20px; margin-bottom: 24px; border-left: 3px solid var(--gold); background: var(--navy-2); font-size: 12px; line-height: 1.6; }
-  .signal-banner strong { color: var(--gold); display: block; margin-bottom: 4px; font-size: 10px; letter-spacing: 2px; }
+  body { background: var(--canvas); color: var(--body); font-family: 'Inter', sans-serif; }
+  .app { min-height: 100vh; padding: 40px clamp(20px, 4vw, 56px); width: 100%; }
+
+  .header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 28px; }
+  .brand { font-size: 19px; font-weight: 700; letter-spacing: -0.3px; }
+  .brand span { color: var(--primary); }
+  .tagline { color: var(--muted); font-size: 11px; font-weight: 500; letter-spacing: 0.4px; margin-top: 2px; }
+  .header-meta { font-size: 11px; color: var(--muted); }
+
+  /* Top metrics row */
+  .metrics-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 14px; }
+  @media (max-width: 900px) { .metrics-row { grid-template-columns: 1fr; } }
+  .metric-card { background: var(--surface); border-radius: 10px; padding: 18px 20px; }
+  .metric-label { font-size: 11px; color: var(--muted); font-weight: 500; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+  .metric-value { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 700; line-height: 1; }
+  .metric-value.gold { color: var(--primary); }
+  .metric-delta { font-size: 12px; font-weight: 600; margin-top: 8px; display: flex; align-items: center; gap: 4px; }
+  .metric-delta.up { color: var(--trading-up); }
+  .metric-delta.down { color: var(--trading-down); }
+  .metric-sub { font-size: 11px; color: var(--muted); margin-top: 8px; }
+
+  /* Main content row: chart + side panel */
+  .main-row { display: grid; grid-template-columns: 1fr 320px; gap: 14px; margin-bottom: 14px; }
+  @media (max-width: 900px) { .main-row { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--surface); border-radius: 10px; padding: 22px; display: flex; flex-direction: column; height: 100%; }
+  .panel-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+  .panel-title { font-size: 14px; font-weight: 600; color: var(--on-dark); }
+  .panel-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .panel-control {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.4px; text-transform: uppercase;
+    padding: 5px 10px; border-radius: 5px; background: var(--surface-elevated); color: var(--primary);
+  }
+
+  .alert-panel-body { display: flex; flex-direction: column; flex: 1; }
+  .alert-box { padding: 14px; background: var(--surface-elevated); border-radius: 8px; font-size: 12px; line-height: 1.7; color: var(--body); flex: 1; }
+  .alert-placeholder { padding: 14px; font-size: 12px; color: var(--muted); line-height: 1.6; flex: 1; }
+
+  .tooltip-box { background: var(--surface-elevated); border-radius: 6px; padding: 10px 14px; font-size: 12px; }
+  .tooltip-box .t-label { color: var(--muted); font-size: 10px; margin-bottom: 4px; }
+  .tooltip-box .t-value { font-family: 'JetBrains Mono', monospace; color: var(--primary); font-weight: 600; font-size: 15px; }
+
+  /* News feed panel */
+  .feed-panel { background: var(--surface); border-radius: 10px; padding: 22px; }
+  .feed-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .refresh-btn {
+    background: var(--surface-elevated); border: none; color: var(--primary);
+    padding: 7px 14px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: 'Inter';
+  }
+  .refresh-btn:hover { background: var(--primary); color: var(--on-primary); }
+  .refresh-btn:disabled { opacity: 0.5; cursor: default; }
+  .last-updated { font-size: 10px; color: var(--muted); margin-top: 3px; }
+
+  .news-row { padding: 13px 0; border-bottom: 1px solid var(--hairline); font-size: 13px; line-height: 1.5; }
+  .news-row:last-child { border-bottom: none; }
+  .news-meta { display: flex; gap: 10px; align-items: center; margin-top: 6px; font-size: 11px; color: var(--muted); }
+  .pill { padding: 3px 9px; border-radius: 4px; font-size: 10px; font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase; }
+  .pill.positive { background: rgba(14,203,129,0.15); color: var(--trading-up); }
+  .pill.negative { background: rgba(246,70,93,0.15); color: var(--trading-down); }
+  .pill.neutral { background: var(--surface-elevated); color: var(--muted-strong); }
+
+  .currency-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; }
+  .currency-btn {
+    background: var(--surface); border: 1px solid var(--hairline); color: var(--muted);
+    padding: 6px 14px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif;
+    transition: all 0.15s;
+  }
+  .currency-btn:hover { border-color: var(--primary); color: var(--primary); }
+  .currency-btn.active { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+
+  .chart-legend { display: flex; gap: 16px; margin-bottom: 12px; font-size: 10px; color: var(--muted); align-items: center; }
+  .chart-legend span { display: flex; align-items: center; gap: 5px; }
+  .legend-line { width: 18px; height: 2px; border-radius: 1px; display: inline-block; }
+  .legend-line.solid { background: var(--primary); }
+  .legend-line.dashed { height: 0; border-top: 2px dashed var(--trading-up); width: 18px; }
+  .legend-band { width: 18px; height: 8px; border-radius: 2px; display: inline-block; background: rgba(252,213,53,0.15); border: 1px solid rgba(252,213,53,0.3); }
 `;
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     return (
-      <div className="custom-tooltip">
-        <div className="label">{label}</div>
-        <div className="value">{payload[0]?.value?.toFixed(4)} NPR</div>
+      <div className="tooltip-box">
+        <div className="t-label">{label}</div>
+        <div className="t-value">{payload[0]?.value?.toFixed(4)} NPR</div>
       </div>
     );
   }
@@ -80,159 +115,199 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 export default function Dashboard() {
+  const [currency, setCurrency] = useState("USD");
+  const [currencies, setCurrencies] = useState([]);
   const [liveRate, setLiveRate] = useState(null);
+  const [history, setHistory] = useState([]);
   const [predictions, setPredictions] = useState([]);
-  const [transfers, setTransfers] = useState([]);
-  const [sentimentSummary, setSentimentSummary] = useState(null);
   const [news, setNews] = useState([]);
+  const [alert, setAlert] = useState(null);
+  const [loadingAlert, setLoadingAlert] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    fetch("http://localhost:8000/api/rates/live").then(r => r.json()).then(setLiveRate);
-    fetch("http://localhost:8000/api/predict/").then(r => r.json()).then(setPredictions);
-    fetch("http://localhost:8000/api/transfers/Ramesh Thapa").then(r => r.json()).then(d => setTransfers(d.slice(0, 6)));
-    fetch("http://localhost:8000/api/sentiment/summary").then(r => r.json()).then(setSentimentSummary);
-    fetch("http://localhost:8000/api/sentiment/").then(r => r.json()).then(d => setNews(d.slice(0, 8)));
+    fetch("http://localhost:8000/api/rates/currencies").then(r => r.json()).then(setCurrencies);
+    fetch("http://localhost:8000/api/sentiment/").then(r => r.json()).then(d => {
+      setNews(d.slice(0, 6));
+      setLastUpdated(new Date());
+    });
   }, []);
 
-  const chartData = predictions.map(p => ({
-    date: p.predicted_for.slice(5),
-    predicted: parseFloat(p.predicted_rate),
-    low: parseFloat(p.confidence_low),
-    high: parseFloat(p.confidence_high),
-  }));
+  useEffect(() => {
+    fetch(`http://localhost:8000/api/rates/live?currency=${currency}`).then(r => r.json()).then(setLiveRate);
+    fetch(`http://localhost:8000/api/rates/history?currency=${currency}&days=90`).then(r => r.json()).then(setHistory);
+    fetch(`http://localhost:8000/api/predict/?currency=${currency}`).then(r => r.json()).then(setPredictions);
+    setAlert(null);
+    setLoadingAlert(true);
+    fetch(`http://localhost:8000/api/alerts/generate?currency=${currency}&lang=en`).then(r => r.json()).then(d => {
+      setAlert(d);
+      setLoadingAlert(false);
+    });
+  }, [currency]);
+
+  const chartData = (() => {
+    if (!history.length && !predictions.length) return [];
+
+    const dataMap = {};
+
+    history.forEach(h => {
+      const d = new Date(h.recorded_at).toISOString().slice(5, 10);
+      dataMap[d] = { ...dataMap[d], date: d, actual: parseFloat(h.mid_rate) };
+    });
+
+    predictions.forEach(p => {
+      const d = p.predicted_for.slice(5);
+      dataMap[d] = {
+        ...dataMap[d],
+        date: d,
+        predicted: parseFloat(p.predicted_rate),
+        low: parseFloat(p.confidence_low),
+        high: parseFloat(p.confidence_high),
+      };
+    });
+
+    return Object.values(dataMap).sort((a, b) => a.date.localeCompare(b.date));
+  })();
 
   const trend = predictions.length >= 2
     ? predictions[predictions.length - 1].predicted_rate - predictions[0].predicted_rate
     : 0;
 
+  const refreshNews = async () => {
+    setRefreshing(true);
+    await fetch("http://localhost:8000/api/sentiment/refresh", { method: "POST" });
+    const newsRes = await fetch("http://localhost:8000/api/sentiment/");
+    setNews((await newsRes.json()).slice(0, 6));
+    setLastUpdated(new Date());
+    setRefreshing(false);
+  };
+
   return (
     <>
       <style>{CSS}</style>
       <div className="app">
-        <header className="header">
-          <div className="brand">Himalayan<span>Hawala</span></div>
-          <div className="tagline">Remittance Intelligence · Nepal</div>
-        </header>
-
-        {/* Sentiment Banner */}
-        {sentimentSummary && (
-          <div className="signal-banner">
-            <strong>MARKET SIGNAL · {sentimentSummary.signal}</strong>
-            {sentimentSummary.explanation}
+        <div className="header">
+          <div>
+            <div className="brand">Himalayan<span>Hawala</span></div>
+            <div className="tagline">REMITTANCE INTELLIGENCE · NEPAL</div>
           </div>
-        )}
+          <div className="header-meta">NRB Official Data</div>
+        </div>
 
-        <div className="grid">
-          {/* Live Rate */}
-          <div className="card">
-            <div className="card-label">USD / NPR · Live</div>
-            {liveRate ? (
-              <>
-                <div className="rate-big">{liveRate.mid_rate}</div>
-                <div className="rate-sub">
-                  <div>BUY <span>{liveRate.buy_rate}</span></div>
-                  <div>SELL <span>{liveRate.sell_rate}</span></div>
-                </div>
-                <div className="as-of">NRB Official · {new Date(liveRate.recorded_at).toLocaleDateString('en-GB')}</div>
-                <div className="signal">
-                  <strong>7-DAY SIGNAL</strong><br />
-                  {trend < 0
-                    ? `Rate projected to fall ${Math.abs(trend).toFixed(2)} NPR. Favorable window to receive.`
-                    : `Rate projected to rise ${trend.toFixed(2)} NPR. Consider sending soon.`}
-                </div>
-              </>
-            ) : <div style={{ color: "var(--muted)", fontSize: 12 }}>Loading...</div>}
+        {/* Currency selector */}
+        <div className="currency-bar">
+          {currencies.map(c => (
+            <button
+              key={c}
+              className={`currency-btn${c === currency ? ' active' : ''}`}
+              onClick={() => setCurrency(c)}
+            >{c}</button>
+          ))}
+        </div>
+
+        {/* Top metrics row */}
+        <div className="metrics-row">
+          <div className="metric-card">
+            <div className="metric-label">{currency} / NPR · LIVE</div>
+            <div className="metric-value gold">{liveRate ? liveRate.mid_rate : "—"}</div>
+            <div className="metric-sub">Buy {liveRate?.buy_rate} · Sell {liveRate?.sell_rate}</div>
           </div>
 
-          {/* Chart */}
-          <div className="chart-card">
-            <div className="chart-header">
-              <div>
-                <div className="chart-title">7-Day Rate Forecast</div>
-                <div className="chart-sub">Random Forest · MAE 0.59 NPR</div>
-              </div>
-              <div className="badge">AI Prediction</div>
+          <div className="metric-card">
+            <div className="metric-label">7-DAY PROJECTED CHANGE</div>
+            <div className="metric-value">{trend ? `${trend > 0 ? '+' : ''}${trend.toFixed(2)}` : "—"}</div>
+            <div className={`metric-delta ${trend < 0 ? "down" : "up"}`}>
+              {trend < 0 ? "\u2193 Falling" : "\u2191 Rising"}
             </div>
-            <ResponsiveContainer width="100%" height={240}>
+          </div>
+
+          <div className="metric-card">
+            <div className="metric-label">MARKET SIGNAL</div>
+            <div className="metric-value" style={{
+              color: trend > 0 ? "var(--trading-up)" :
+                     trend < 0 ? "var(--trading-down)" : "var(--muted-strong)",
+              fontSize: 22
+            }}>
+              {trend > 0 ? "BULLISH" : trend < 0 ? "BEARISH" : "NEUTRAL"}
+            </div>
+            <div className="metric-sub">{currency}/NPR forecast</div>
+          </div>
+        </div>
+
+        {/* Main chart + alert panel */}
+        <div className="main-row">
+          <div className="panel">
+            <div className="panel-header">
+              <div>
+                <div className="panel-title">{currency}/NPR Rate</div>
+                <div className="panel-sub">90-day history + 7-day forecast</div>
+              </div>
+            </div>
+            <div className="chart-legend">
+              <span><i className="legend-line solid" /> Actual</span>
+              <span><i className="legend-line dashed" /> Forecast</span>
+              <span><i className="legend-band" /> Confidence</span>
+            </div>
+            <ResponsiveContainer width="100%" height={260}>
               <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="2 4" stroke="#152238" />
-                <XAxis dataKey="date" stroke="#6B7A94" tick={{ fontSize: 10, fontFamily: 'DM Mono' }} />
-                <YAxis stroke="#6B7A94" tick={{ fontSize: 10, fontFamily: 'DM Mono' }} domain={['auto', 'auto']} />
+                <CartesianGrid strokeDasharray="2 4" stroke="#2b3139" />
+                <XAxis dataKey="date" stroke="#707a8a" tick={{ fontSize: 10, fontFamily: 'JetBrains Mono' }} />
+                <YAxis stroke="#707a8a" tick={{ fontSize: 10, fontFamily: 'JetBrains Mono' }} domain={['auto', 'auto']} />
                 <Tooltip content={<CustomTooltip />} />
-                <Line type="monotone" dataKey="high" stroke="#8A6D2F" strokeDasharray="3 3" dot={false} strokeWidth={1} />
-                <Line type="monotone" dataKey="predicted" stroke="#C9A84C" strokeWidth={2} dot={{ r: 3, fill: '#C9A84C' }} />
-                <Line type="monotone" dataKey="low" stroke="#8A6D2F" strokeDasharray="3 3" dot={false} strokeWidth={1} />
+                <Area type="monotone" dataKey="high" stroke="none" fill="#FCD535" fillOpacity={0.08} />
+                <Area type="monotone" dataKey="low" stroke="none" fill="#FCD535" fillOpacity={0.08} />
+                <Line type="monotone" dataKey="actual" stroke="#FCD535" strokeWidth={2} dot={false} connectNulls={false} />
+                <Line type="monotone" dataKey="predicted" stroke="#0ecb81" strokeWidth={2} strokeDasharray="5 3" dot={{ r: 3, fill: '#0ecb81' }} connectNulls />
+                <Line type="monotone" dataKey="high" stroke="transparent" strokeWidth={0} dot={false} />
+                <Line type="monotone" dataKey="low" stroke="transparent" strokeWidth={0} dot={false} />
+                <ReferenceLine
+                  x={predictions.length > 0 ? predictions[0].predicted_for.slice(5) : ''}
+                  stroke="#2b3139" strokeWidth={1} strokeDasharray="3 3"
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>
-        </div>
 
-        {/* Sentiment Breakdown */}
-        {sentimentSummary && (
-          <div className="sentiment-grid">
-            <div className="sentiment-card">
-              <div className="card-label">Positive News</div>
-              <div className="sentiment-num up">{sentimentSummary.breakdown.positive || 0}</div>
-            </div>
-            <div className="sentiment-card">
-              <div className="card-label">Negative News</div>
-              <div className="sentiment-num down">{sentimentSummary.breakdown.negative || 0}</div>
-            </div>
-            <div className="sentiment-card">
-              <div className="card-label">Neutral News</div>
-              <div className="sentiment-num" style={{ color: "var(--muted)" }}>{sentimentSummary.breakdown.neutral || 0}</div>
-            </div>
-          </div>
-        )}
-
-        {/* News Feed */}
-        <div className="table-card">
-          <div className="table-title">Financial News Sentiment</div>
-          <div className="news-list">
-            {news.map((item, i) => (
-              <div className="news-item" key={i}>
-                <div>{item.headline}</div>
-                <div className="news-meta">
-                  <span>{item.source}</span>
-                  <span className={`pill pill-${item.sentiment}`}>{item.sentiment}</span>
-                  <span>{item.sentiment_score}</span>
-                </div>
+          <div className="panel">
+            <div className="panel-header">
+              <div>
+                <div className="panel-title">Smart Alert</div>
+                <div className="panel-sub">AI-generated guidance</div>
               </div>
-            ))}
+            </div>
+            <div className="alert-panel-body">
+              {loadingAlert && <div style={{ color: "var(--muted)", fontSize: 11 }}>Generating alert...</div>}
+              {alert && !loadingAlert && <div className="alert-box">{alert.alert}</div>}
+              {!alert && !loadingAlert && (
+                <div className="alert-placeholder">Select a currency above to see AI-generated guidance.</div>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Transfer History */}
-        <div className="table-card">
-          <div className="table-title">Transfer History</div>
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Sender</th>
-                <th>Recipient</th>
-                <th>USD</th>
-                <th>NPR</th>
-                <th>Rate</th>
-                <th>Purpose</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {transfers.map(t => (
-                <tr key={t.id}>
-                  <td>{new Date(t.transferred_at).toLocaleDateString('en-GB')}</td>
-                  <td>{t.sender_name}</td>
-                  <td>{t.recipient_name}</td>
-                  <td>${t.amount_usd}</td>
-                  <td>₨{t.amount_npr.toLocaleString()}</td>
-                  <td>{t.rate_at_send}</td>
-                  <td style={{ textTransform: 'capitalize' }}>{t.purpose}</td>
-                  <td className={t.status === 'completed' ? 'up' : 'down'}>{t.status.toUpperCase()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {/* News feed */}
+        <div className="feed-panel">
+          <div className="feed-header">
+            <div>
+              <div className="panel-title">Financial News Sentiment</div>
+              {lastUpdated && <div className="last-updated">Last updated {lastUpdated.toLocaleTimeString()}</div>}
+            </div>
+            <button className="refresh-btn" onClick={refreshNews} disabled={refreshing}>
+              {refreshing ? "Refreshing..." : "Refresh News"}
+            </button>
+          </div>
+          {news.map((item, i) => (
+            <div className="news-row" key={i}>
+              <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>
+                <div style={{ cursor: 'pointer' }}>{item.headline}</div>
+              </a>
+              <div className="news-meta">
+                <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', textDecoration: 'none', fontSize: 11, fontWeight: 600 }}>{item.source} ↗</a>
+                <span className={`pill ${item.sentiment}`}>{item.sentiment}</span>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </>
