@@ -2,16 +2,17 @@ import sys
 import os
 import pickle
 import pandas as pd
-import numpy as np
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
 
 load_dotenv()
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
+MIN_RECORDS = 100
 
 def get_engine():
     host = os.getenv("DB_HOST")
@@ -21,16 +22,29 @@ def get_engine():
     password = os.getenv("DB_PASSWORD")
     return create_engine(f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{name}")
 
-def load_usd_data():
+def get_currencies():
+    engine = get_engine()
+    with engine.connect() as conn:
+        result = conn.execute(text("""
+            SELECT currency, COUNT(*) as cnt
+            FROM exchange_rates
+            WHERE mid_rate IS NOT NULL
+            GROUP BY currency
+            HAVING COUNT(*) >= :min_records
+            ORDER BY currency
+        """), {"min_records": MIN_RECORDS})
+        return [row._mapping['currency'] for row in result]
+
+def load_currency_data(currency):
     engine = get_engine()
     query = """
         SELECT mid_rate, recorded_at 
         FROM exchange_rates 
-        WHERE currency = 'USD'
+        WHERE currency = %(currency)s
         AND mid_rate IS NOT NULL
         ORDER BY recorded_at ASC
     """
-    df = pd.read_sql(query, engine)
+    df = pd.read_sql(query, engine, params={"currency": currency})
     return df
 
 def engineer_features(df):
@@ -59,14 +73,18 @@ def engineer_features(df):
     df = df.dropna().reset_index(drop=True)
     return df
 
-def train():
-    print("Loading data...")
-    df = load_usd_data()
+def train_for_currency(currency):
+    print(f"\n=== Training model for {currency} ===")
+
+    df = load_currency_data(currency)
     print(f"Loaded {len(df)} records.")
 
-    print("Engineering features...")
     df = engineer_features(df)
     print(f"After feature engineering: {len(df)} records.")
+
+    if len(df) < MIN_RECORDS:
+        print(f"Skipping {currency}: only {len(df)} records after engineering (need {MIN_RECORDS}).")
+        return
 
     features = [
         'day_of_week', 'month',
@@ -94,18 +112,30 @@ def train():
     preds = model.predict(X_test)
 
     mae_delta = mean_absolute_error(y_test, preds)
-    print(f"MAE on delta: {mae_delta:.4f} NPR/day")
+    print(f"MAE on delta: {mae_delta:.4f} {currency}/day")
 
     last_rates = df.loc[X_test.index, 'mid_rate']
     predicted_rates = last_rates.values + preds
     actual_rates = last_rates.values + y_test.values
     mae_rate = mean_absolute_error(actual_rates, predicted_rates)
-    print(f"MAE on actual rate: {mae_rate:.4f} NPR")
+    print(f"MAE on actual rate: {mae_rate:.4f} {currency}")
 
-    model_path = os.path.join(os.path.dirname(__file__), 'model.pkl')
+    model_path = os.path.join(os.path.dirname(__file__), f'model_{currency}.pkl')
     with open(model_path, 'wb') as f:
         pickle.dump({'model': model, 'features': features}, f)
-    print(f"Model saved.")
+    print(f"Model saved to {model_path}")
+
+def train():
+    currencies = get_currencies()
+
+    if not currencies:
+        print("No currencies found with enough history.")
+        return
+
+    print(f"Found currencies with >= {MIN_RECORDS} records: {', '.join(currencies)}")
+
+    for currency in currencies:
+        train_for_currency(currency)
 
 if __name__ == "__main__":
     train()

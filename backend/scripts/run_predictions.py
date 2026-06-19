@@ -2,7 +2,8 @@ import sys
 import os
 import pickle
 import pandas as pd
-from datetime import date, timedelta
+import glob
+from datetime import timedelta
 from sqlalchemy import create_engine
 from dotenv import load_dotenv
 
@@ -10,6 +11,8 @@ load_dotenv()
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from db.connection import get_connection
+
+ML_DIR = os.path.join(os.path.dirname(__file__), '..', 'ml')
 
 def get_engine():
     host = os.getenv("DB_HOST")
@@ -19,16 +22,16 @@ def get_engine():
     password = os.getenv("DB_PASSWORD")
     return create_engine(f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{name}")
 
-def load_recent_usd():
+def load_currency_data(currency):
     engine = get_engine()
     query = """
         SELECT mid_rate, recorded_at 
         FROM exchange_rates 
-        WHERE currency = 'USD'
+        WHERE currency = %(currency)s
         AND mid_rate IS NOT NULL
         ORDER BY recorded_at ASC
     """
-    df = pd.read_sql(query, engine)
+    df = pd.read_sql(query, engine, params={"currency": currency})
     df['recorded_at'] = pd.to_datetime(df['recorded_at'])
     df = df.drop_duplicates(subset='recorded_at').sort_values('recorded_at')
     df = df.set_index('recorded_at').resample('D').ffill().reset_index()
@@ -48,14 +51,30 @@ def make_features(df):
     df['delta_7'] = df['mid_rate'].diff(7)
     return df
 
-def run_predictions():
-    model_path = os.path.join(os.path.dirname(__file__), '..', 'ml', 'model.pkl')
+def get_available_models():
+    pattern = os.path.join(ML_DIR, 'model_*.pkl')
+    model_files = glob.glob(pattern)
+    currencies = []
+    for f in model_files:
+        basename = os.path.basename(f)
+        currency = basename.replace('model_', '').replace('.pkl', '')
+        currencies.append(currency)
+    return currencies
+
+def run_predictions_for_currency(currency):
+    print(f"\n=== Generating predictions for {currency} ===")
+
+    model_path = os.path.join(ML_DIR, f'model_{currency}.pkl')
+    if not os.path.exists(model_path):
+        print(f"No model found for {currency}, skipping.")
+        return
+
     with open(model_path, 'rb') as f:
         saved = pickle.load(f)
     model = saved['model']
     features = saved['features']
 
-    df = load_recent_usd()
+    df = load_currency_data(currency)
     predictions = []
     current_rate = df['mid_rate'].iloc[-1]
 
@@ -66,7 +85,6 @@ def run_predictions():
         next_rate = round(current_rate + delta, 4)
         next_date = df['recorded_at'].iloc[-1] + timedelta(days=1)
 
-        # confidence interval ±0.5 NPR
         conf_low = round(next_rate - 0.5, 4)
         conf_high = round(next_rate + 0.5, 4)
 
@@ -77,7 +95,6 @@ def run_predictions():
             'conf_high': conf_high
         })
 
-        # append predicted row for next iteration
         new_row = pd.DataFrame([{
             'recorded_at': next_date,
             'mid_rate': next_rate
@@ -85,23 +102,38 @@ def run_predictions():
         df = pd.concat([df, new_row], ignore_index=True)
         current_rate = next_rate
 
-    # store in db
     conn = get_connection()
     cur = conn.cursor()
 
-    cur.execute("DELETE FROM rate_predictions WHERE predicted_for >= %s", (date.today(),))
+    cur.execute(
+        "DELETE FROM rate_predictions WHERE currency = %s",
+        (currency,)
+    )
 
     for p in predictions:
         cur.execute("""
-            INSERT INTO rate_predictions (predicted_for, predicted_rate, confidence_low, confidence_high)
-            VALUES (%s, %s, %s, %s)
-        """, (p['date'].date(), float(p['rate']), float(p['conf_low']), float(p['conf_high'])))
-        print(f"{p['date'].date()} → {p['rate']} NPR (±0.5)")
+            INSERT INTO rate_predictions (currency, predicted_for, predicted_rate, confidence_low, confidence_high)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (currency, p['date'].date(), float(p['rate']), float(p['conf_low']), float(p['conf_high'])))
+        print(f"{p['date'].date()} -> {p['rate']}")
 
     conn.commit()
     cur.close()
     conn.close()
-    print("Predictions stored.")
+    print(f"Predictions stored for {currency}.")
+
+def run_predictions():
+    currencies = get_available_models()
+
+    if not currencies:
+        print("No per-currency models found in ml/ directory.")
+        print("Run ml/train_model.py first.")
+        return
+
+    print(f"Found models for: {', '.join(currencies)}")
+
+    for currency in currencies:
+        run_predictions_for_currency(currency)
 
 if __name__ == "__main__":
     run_predictions()
