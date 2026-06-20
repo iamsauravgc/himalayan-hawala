@@ -10,12 +10,14 @@ const CustomTooltip = ({ active, payload, label }) => {
     return (
       <div className="tooltip-box">
         <div className="t-label">{label}</div>
-        <div className="t-value">{payload[0]?.value?.toFixed(4)} NPR</div>
+        <div className="t-value">{payload[0]?.value?.toFixed(2)} NPR</div>
       </div>
     );
   }
   return null;
 };
+
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function Dashboard() {
   const [currency, setCurrency] = useState("USD");
@@ -25,27 +27,23 @@ export default function Dashboard() {
   const [predictions, setPredictions] = useState([]);
   const [news, setNews] = useState([]);
   const [alert, setAlert] = useState(null);
-  const [loadingAlert, setLoadingAlert] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    fetch("http://localhost:8000/api/rates/currencies").then(r => r.json()).then(setCurrencies);
-    fetch("http://localhost:8000/api/sentiment/").then(r => r.json()).then(d => {
+    fetch(`${API}/api/rates/currencies`).then(r => r.json()).then(setCurrencies);
+    fetch(`${API}/api/sentiment/`).then(r => r.json()).then(d => {
       setNews(d.slice(0, 6));
       setLastUpdated(new Date());
     });
   }, []);
 
   useEffect(() => {
-    fetch(`http://localhost:8000/api/rates/live?currency=${currency}`).then(r => r.json()).then(setLiveRate);
-    fetch(`http://localhost:8000/api/rates/history?currency=${currency}&days=90`).then(r => r.json()).then(setHistory);
-    fetch(`http://localhost:8000/api/predict/?currency=${currency}`).then(r => r.json()).then(setPredictions);
-    setAlert(null);
-    setLoadingAlert(true);
-    fetch(`http://localhost:8000/api/alerts/generate?currency=${currency}&lang=en`).then(r => r.json()).then(d => {
+    fetch(`${API}/api/rates/live?currency=${currency}`).then(r => r.json()).then(setLiveRate);
+    fetch(`${API}/api/rates/history?currency=${currency}&days=90`).then(r => r.json()).then(setHistory);
+    fetch(`${API}/api/predict/?currency=${currency}`).then(r => r.json()).then(setPredictions);
+    fetch(`${API}/api/alerts/generate?currency=${currency}&lang=en`).then(r => r.json()).then(d => {
       setAlert(d);
-      setLoadingAlert(false);
     });
   }, [currency]);
 
@@ -79,8 +77,8 @@ export default function Dashboard() {
 
   const refreshNews = async () => {
     setRefreshing(true);
-    await fetch("http://localhost:8000/api/sentiment/refresh", { method: "POST" });
-    const newsRes = await fetch("http://localhost:8000/api/sentiment/");
+    await fetch(`${API}/api/sentiment/refresh`, { method: "POST" });
+    const newsRes = await fetch(`${API}/api/sentiment/`);
     setNews((await newsRes.json()).slice(0, 6));
     setLastUpdated(new Date());
     setRefreshing(false);
@@ -111,8 +109,9 @@ export default function Dashboard() {
         <div className="metrics-row">
           <div className="metric-card">
             <div className="metric-label">{currency} / NPR · LIVE</div>
-            <div className="metric-value gold">{liveRate ? liveRate.mid_rate : "—"}</div>
-            <div className="metric-sub">Buy {liveRate?.buy_rate} · Sell {liveRate?.sell_rate}</div>
+            <div className="metric-value gold">{liveRate ? parseFloat(liveRate.mid_rate).toFixed(2) : "—"}</div>
+            <div className="metric-sub">Buy {liveRate ? parseFloat(liveRate.buy_rate).toFixed(2) : "—"} · Sell {liveRate ? parseFloat(liveRate.sell_rate).toFixed(2) : "—"}</div>
+            <div className="metric-sub" style={{ marginTop: 6, fontSize: 11 }}>{liveRate ? new Date(liveRate.recorded_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ""}</div>
           </div>
 
           <div className="metric-card">
@@ -156,7 +155,7 @@ export default function Dashboard() {
                   <LineChart data={chartData}>
                     <CartesianGrid strokeDasharray="2 4" stroke="#2b3139" />
                     <XAxis dataKey="date" stroke="#707a8a" tick={{ fontSize: 10, fontFamily: 'JetBrains Mono' }} />
-                    <YAxis stroke="#707a8a" tick={{ fontSize: 10, fontFamily: 'JetBrains Mono' }} domain={['auto', 'auto']} />
+                    <YAxis stroke="#707a8a" tick={{ fontSize: 10, fontFamily: 'JetBrains Mono' }} domain={['auto', 'auto']} tickFormatter={(v) => v.toFixed(2)} />
                     <Tooltip content={<CustomTooltip />} />
                     <Area type="monotone" dataKey="high" stroke="none" fill="#FCD535" fillOpacity={0.08} />
                     <Area type="monotone" dataKey="low" stroke="none" fill="#FCD535" fillOpacity={0.08} />
@@ -184,9 +183,9 @@ export default function Dashboard() {
                 <div className="panel-sub">AI-generated guidance for {currency}</div>
               </div>
             </div>
-            {loadingAlert && <div className="generating-text">Generating alert...</div>}
-            {alert && !loadingAlert && <div className="alert-box">{alert.alert}</div>}
-            {!alert && !loadingAlert && (
+            {alert ? (
+              <div className="alert-box">{alert.alert}</div>
+            ) : (
               <div className="alert-placeholder">Select a currency above to see AI-generated guidance.</div>
             )}
           </div>

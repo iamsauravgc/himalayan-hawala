@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Depends
 from sqlalchemy import text
 from db.engine import engine
+from utils import validate_currency
 
 router = APIRouter()
 
 @router.get("/")
-def get_predictions(currency: str = Query("USD", description="Currency code")):
+def get_predictions(currency: str = Depends(validate_currency)):
     with engine.connect() as conn:
         result = conn.execute(text("""
             SELECT currency, predicted_for, predicted_rate, confidence_low, confidence_high

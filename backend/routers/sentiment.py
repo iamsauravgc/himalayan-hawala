@@ -1,6 +1,8 @@
-from fastapi import APIRouter
+import logging
+from fastapi import APIRouter, HTTPException
 from sqlalchemy import text
 from db.engine import engine
+from datetime import datetime, timedelta
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -9,7 +11,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+log = logging.getLogger("hawala")
 router = APIRouter()
+last_refresh = None
 
 @router.get("/")
 def get_sentiment():
@@ -25,9 +29,15 @@ def get_sentiment():
 
 @router.post("/refresh")
 def refresh_news():
+    global last_refresh
+    now = datetime.now()
+    if last_refresh and now - last_refresh < timedelta(seconds=60):
+        raise HTTPException(status_code=429, detail="Please wait 60 seconds between refreshes")
     from scripts.fetch_news import fetch_articles, store_articles
     articles = fetch_articles()
     store_articles(articles)
+    last_refresh = now
+    log.info("News refresh completed: %d articles stored", len(articles))
     return {"status": "refreshed", "count": len(articles)}
 
 @router.get("/summary")

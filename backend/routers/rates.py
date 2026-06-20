@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Depends
 from sqlalchemy import text
 from db.engine import engine
+from utils import validate_currency
 
 router = APIRouter()
 
 @router.get("/live")
-def get_live_rate(currency: str = Query("USD", description="Currency code")):
+def get_live_rate(currency: str = Depends(validate_currency)):
     with engine.connect() as conn:
         result = conn.execute(text("""
             SELECT currency, buy_rate, sell_rate, mid_rate, recorded_at
@@ -18,7 +19,7 @@ def get_live_rate(currency: str = Query("USD", description="Currency code")):
     return dict(row)
 
 @router.get("/history")
-def get_history(currency: str = Query("USD", description="Currency code"), days: int = 90):
+def get_history(currency: str = Depends(validate_currency), days: int = Query(90, ge=1, le=365)):
     with engine.connect() as conn:
         result = conn.execute(text("""
             SELECT currency, mid_rate, recorded_at

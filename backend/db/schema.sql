@@ -31,26 +31,3 @@ CREATE TABLE IF NOT EXISTS news_sentiment (
   published_at TIMESTAMP,
   fetched_at TIMESTAMP DEFAULT NOW()
 );
-
--- Simulated transfers (demo)
-CREATE TABLE IF NOT EXISTS transfers (
-  id SERIAL PRIMARY KEY,
-  sender_name VARCHAR(100),
-  recipient_name VARCHAR(100),
-  amount_usd DECIMAL(10,2),
-  amount_npr DECIMAL(12,2),
-  rate_at_send DECIMAL(10,4),
-  purpose VARCHAR(50),
-  status VARCHAR(20),
-  transferred_at TIMESTAMP
-);
-
--- Alert preferences
-CREATE TABLE IF NOT EXISTS alert_preferences (
-  id SERIAL PRIMARY KEY,
-  user_name VARCHAR(100),
-  target_rate DECIMAL(10,4),
-  alert_direction VARCHAR(10),
-  language VARCHAR(5) DEFAULT 'en',
-  active BOOLEAN DEFAULT TRUE
-);

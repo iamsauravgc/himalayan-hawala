@@ -98,4 +98,3 @@ body { background: var(--canvas); color: var(--body); font-family: 'Inter', sans
 .pill.negative { background: rgba(246,70,93,0.15); color: var(--trading-down); }
 .pill.neutral { background: var(--surface-elevated); color: var(--muted-strong); }
 
-.generating-text { color: var(--muted); font-size: 12px; padding: 4px 0; }
