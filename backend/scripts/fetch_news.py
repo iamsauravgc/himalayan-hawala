@@ -1,5 +1,6 @@
 import sys
 import os
+import time
 import requests
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
@@ -8,37 +9,30 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-QUERIES = [
-    "Nepal rupee exchange rate forex",
-    "Nepal remittance NPR dollar",
-    "USD NPR exchange rate forecast",
-    "Federal Reserve interest rate impact Asia",
-    "emerging market currency forex",
-    "Nepal economy trade deficit",
-]
+EVERYTHING_QUERY = "Nepal rupee exchange rate OR Nepali remittance NPR OR USD NPR forecast OR Federal Reserve interest rate Asia OR emerging market currency forex OR Nepal economy trade deficit"
 
 
 def fetch_articles():
     articles = []
     api_key = os.getenv("NEWS_API_KEY")
 
-    for query in QUERIES:
-        r = requests.get(
-            "https://newsapi.org/v2/everything",
-            params={
-                "q": query,
-                "language": "en",
-                "pageSize": 5,
-                "sortBy": "publishedAt",
-                "apiKey": api_key
-            }
-        )
-        r.raise_for_status()
-        data = r.json()
-        if data.get("status") == "ok":
-            batch = data.get("articles", [])
-            articles += batch
-            print(f"'{query}' -> {len(batch)} articles")
+    r = requests.get(
+        "https://newsapi.org/v2/everything",
+        params={
+            "q": EVERYTHING_QUERY,
+            "language": "en",
+            "pageSize": 10,
+            "sortBy": "publishedAt",
+            "apiKey": api_key
+        }
+    )
+    r.raise_for_status()
+    data = r.json()
+    if data.get("status") == "ok":
+        articles += data.get("articles", [])
+        print(f"  everything -> {len(data.get('articles', []))} articles")
+
+    time.sleep(1)
 
     r = requests.get(
         "https://newsapi.org/v2/top-headlines",
