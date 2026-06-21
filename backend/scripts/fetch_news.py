@@ -17,6 +17,7 @@ QUERIES = [
     "Nepal economy trade deficit",
 ]
 
+
 def fetch_articles():
     articles = []
     api_key = os.getenv("NEWS_API_KEY")
@@ -32,10 +33,27 @@ def fetch_articles():
                 "apiKey": api_key
             }
         )
+        r.raise_for_status()
         data = r.json()
         if data.get("status") == "ok":
-            articles += data.get("articles", [])
-            print(f"'{query}' -> {len(data.get('articles', []))} articles")
+            batch = data.get("articles", [])
+            articles += batch
+            print(f"'{query}' -> {len(batch)} articles")
+
+    r = requests.get(
+        "https://newsapi.org/v2/top-headlines",
+        params={
+            "country": "us",
+            "category": "business",
+            "pageSize": 5,
+            "apiKey": api_key
+        }
+    )
+    r.raise_for_status()
+    data = r.json()
+    if data.get("status") == "ok":
+        articles += data.get("articles", [])
+        print(f"  top-headlines -> {len(data.get('articles', []))} articles")
 
     seen = set()
     unique = []
@@ -55,6 +73,7 @@ def run_finbert(headline):
         headers={"Authorization": f"Bearer {api_key}"},
         json={"inputs": headline}
     )
+    r.raise_for_status()
     result = r.json()
     if isinstance(result, list) and len(result) > 0:
         scores = result[0]
@@ -62,7 +81,7 @@ def run_finbert(headline):
         return best['label'], round(best['score'], 4)
     return "neutral", 0.5
 
-def store_articles(articles):
+def store_articles(articles, currency='USD'):
     conn = get_connection()
     cur = conn.cursor()
     count = 0
@@ -81,15 +100,16 @@ def store_articles(articles):
         print(f"  -> {sentiment} ({score})")
 
         cur.execute("""
-            INSERT INTO news_sentiment (headline, url, source, sentiment, sentiment_score, published_at)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            INSERT INTO news_sentiment (headline, url, source, sentiment, sentiment_score, currency, published_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (headline) DO UPDATE
             SET sentiment = EXCLUDED.sentiment,
                 sentiment_score = EXCLUDED.sentiment_score,
                 url = EXCLUDED.url,
                 source = EXCLUDED.source,
-                published_at = EXCLUDED.published_at
-        """, (headline, url, source, sentiment, score, published_at))
+                currency = EXCLUDED.currency,
+                fetched_at = NOW()
+        """, (headline, url, source, sentiment, score, currency, published_at))
         count += 1
 
     conn.commit()
@@ -98,5 +118,7 @@ def store_articles(articles):
     print(f"\nStored {count} articles with sentiment.")
 
 if __name__ == "__main__":
+    import sys
+    currency = sys.argv[1] if len(sys.argv) > 1 else 'USD'
     articles = fetch_articles()
-    store_articles(articles)
+    store_articles(articles, currency)

@@ -5,7 +5,9 @@ CREATE TABLE IF NOT EXISTS exchange_rates (
   buy_rate DECIMAL(10,4),
   sell_rate DECIMAL(10,4),
   mid_rate DECIMAL(10,4),
-  recorded_at TIMESTAMP DEFAULT NOW()
+  rate_date DATE DEFAULT CURRENT_DATE,
+  recorded_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE (currency, rate_date)
 );
 
 -- ML model predictions
@@ -28,6 +30,7 @@ CREATE TABLE IF NOT EXISTS news_sentiment (
   source VARCHAR(100),
   sentiment VARCHAR(20),
   sentiment_score DECIMAL(5,4),
+  currency VARCHAR(10) DEFAULT 'USD',
   published_at TIMESTAMP,
   fetched_at TIMESTAMP DEFAULT NOW()
 );

@@ -16,6 +16,7 @@ def fetch_and_store_rates():
     url = f"{NRB_API_URL}/rates?from={today}&to={today}&per_page=1&page=1"
     
     response = requests.get(url)
+    response.raise_for_status()
     data = response.json()
 
     rates = data.get("data", {}).get("payload", [])
@@ -35,9 +36,14 @@ def fetch_and_store_rates():
         mid = round((float(buy) + float(sell)) / 2, 4) if buy and sell else None
 
         cur.execute("""
-            INSERT INTO exchange_rates (currency, buy_rate, sell_rate, mid_rate)
-            VALUES (%s, %s, %s, %s)
-        """, (currency, buy, sell, mid))
+            INSERT INTO exchange_rates (currency, buy_rate, sell_rate, mid_rate, rate_date)
+            VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (currency, rate_date) DO UPDATE
+            SET buy_rate = EXCLUDED.buy_rate,
+                sell_rate = EXCLUDED.sell_rate,
+                mid_rate = EXCLUDED.mid_rate,
+                recorded_at = NOW()
+        """, (currency, buy, sell, mid, today))
 
     conn.commit()
     cur.close()

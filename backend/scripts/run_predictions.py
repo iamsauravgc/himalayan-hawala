@@ -85,8 +85,9 @@ def run_predictions_for_currency(currency):
         next_rate = round(current_rate + delta, 4)
         next_date = df['recorded_at'].iloc[-1] + timedelta(days=1)
 
-        conf_low = round(next_rate - 0.5, 4)
-        conf_high = round(next_rate + 0.5, 4)
+        margin = 0.5 * (1 + i * 0.5)
+        conf_low = round(next_rate - margin, 4)
+        conf_high = round(next_rate + margin, 4)
 
         predictions.append({
             'date': next_date,

@@ -32,6 +32,7 @@ Write a 2-sentence clear, actionable recommendation for someone sending money to
             ]
         }
     )
+    r.raise_for_status()
     result = r.json()
     try:
         return result['choices'][0]['message']['content'].strip()
@@ -47,6 +48,7 @@ def translate_to_nepali(text):
             "messages": [{"role": "user", "content": f"Translate this to Nepali, output only the translation: {text}"}]
         }
     )
+    r.raise_for_status()
     result = r.json()
     try:
         return result['choices'][0]['message']['content'].strip()
@@ -69,7 +71,8 @@ def generate_alert(currency: str = Depends(validate_currency), lang: str = Depen
         predictions = conn.execute(text("""
             SELECT predicted_rate FROM rate_predictions
             WHERE currency = :currency
-            ORDER BY predicted_for ASC
+            ORDER BY predicted_for DESC
+            LIMIT 7
         """), {"currency": currency}).mappings().fetchall()
 
         sentiment_row = conn.execute(text("""
@@ -77,13 +80,15 @@ def generate_alert(currency: str = Depends(validate_currency), lang: str = Depen
                 SUM(CASE WHEN sentiment='positive' THEN 1 ELSE 0 END) as pos,
                 SUM(CASE WHEN sentiment='negative' THEN 1 ELSE 0 END) as neg
             FROM news_sentiment
-        """)).mappings().fetchone()
+            WHERE currency = :currency
+        """), {"currency": currency}).mappings().fetchone()
 
     if not rate_row or not predictions:
         return {"lang": lang, "alert": "Insufficient data for analysis.", "currency": currency}
 
     live_rate = float(rate_row['mid_rate'])
-    trend = float(predictions[-1]['predicted_rate']) - float(predictions[0]['predicted_rate']) if predictions else 0
+    pred_rates = [float(r['predicted_rate']) for r in reversed(predictions)]
+    trend = pred_rates[-1] - pred_rates[0] if pred_rates else 0
     sentiment_signal = "BULLISH" if sentiment_row['pos'] > sentiment_row['neg'] else "BEARISH" if sentiment_row['neg'] > sentiment_row['pos'] else "NEUTRAL"
 
     alert_en = generate_alert_text(currency, live_rate, trend, sentiment_signal)
