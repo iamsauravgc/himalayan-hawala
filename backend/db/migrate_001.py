@@ -15,6 +15,7 @@ cur.execute("""
             ALTER TABLE exchange_rates ADD COLUMN rate_date DATE;
             UPDATE exchange_rates SET rate_date = recorded_at::date WHERE rate_date IS NULL;
             ALTER TABLE exchange_rates ALTER COLUMN rate_date SET NOT NULL;
+            DROP INDEX IF EXISTS uq_exchange_rates_currency_date;
             ALTER TABLE exchange_rates ADD CONSTRAINT uq_exchange_rates_currency_date UNIQUE (currency, rate_date);
         END IF;
         IF NOT EXISTS (
