@@ -27,6 +27,7 @@ export default function Dashboard() {
   const [predictions, setPredictions] = useState([]);
   const [news, setNews] = useState([]);
   const [alert, setAlert] = useState(null);
+  const [backtest, setBacktest] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -45,6 +46,7 @@ export default function Dashboard() {
     fetch(`${API}/api/alerts/generate?currency=${currency}&lang=en`).then(r => r.json()).then(d => {
       setAlert(d);
     });
+    fetch(`${API}/api/predict/backtest?currency=${currency}`).then(r => r.json()).then(setBacktest);
   }, [currency]);
 
   const chartData = (() => {
@@ -189,6 +191,74 @@ export default function Dashboard() {
               <div className="alert-placeholder">Select a currency above to see AI-generated guidance.</div>
             )}
           </div>
+        </div>
+
+        {/* Model Backtest */}
+        <div className="panel" style={{ marginTop: 16 }}>
+          <div className="panel-header">
+            <div>
+              <div className="panel-title">Model Backtest · {currency}</div>
+              <div className="panel-sub">Predicted vs actual rate accuracy</div>
+            </div>
+          </div>
+
+          {backtest && backtest.count > 0 ? (
+            <>
+              <div className="backtest-stats">
+                <div className="backtest-stat">
+                  <div className="backtest-stat-value">{backtest.mae.toFixed(2)}</div>
+                  <div className="backtest-stat-label">Avg Error (NPR)</div>
+                </div>
+                <div className="backtest-stat">
+                  <div className="backtest-stat-value" style={{ color: backtest.direction_accuracy >= 50 ? 'var(--trading-up)' : 'var(--trading-down)' }}>
+                    {backtest.direction_accuracy}%
+                  </div>
+                  <div className="backtest-stat-label">Direction Accuracy</div>
+                </div>
+                <div className="backtest-stat">
+                  <div className="backtest-stat-value">{backtest.count}</div>
+                  <div className="backtest-stat-label">Matched Predictions</div>
+                </div>
+                <div className="backtest-stat">
+                  <div className="backtest-stat-value" style={{ color: backtest.simulated_gain_npr >= 0 ? 'var(--trading-up)' : 'var(--trading-down)' }}>
+                    {backtest.simulated_gain_npr > 0 ? '+' : ''}{backtest.simulated_gain_npr.toFixed(2)}
+                  </div>
+                  <div className="backtest-stat-label">Simulated Gain (NPR)</div>
+                </div>
+              </div>
+
+              <div className="backtest-table-wrap">
+                <table className="backtest-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Predicted</th>
+                      <th>Actual</th>
+                      <th>Error</th>
+                      <th>Error %</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {backtest.results.slice(0, 10).map((r, i) => (
+                      <tr key={i}>
+                        <td>{r.date}</td>
+                        <td>{r.predicted.toFixed(2)}</td>
+                        <td>{r.actual.toFixed(2)}</td>
+                        <td style={{ color: r.error > 0 ? 'var(--trading-up)' : r.error < 0 ? 'var(--trading-down)' : 'inherit' }}>
+                          {r.error > 0 ? '+' : ''}{r.error.toFixed(2)}
+                        </td>
+                        <td>{r.error_pct.toFixed(1)}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          ) : (
+            <div className="backtest-empty">
+              Predictions need time to mature into actual rates before backtesting data is available.
+            </div>
+          )}
         </div>
 
         {/* News feed */}
