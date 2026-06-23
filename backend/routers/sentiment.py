@@ -1,5 +1,5 @@
 import logging
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from sqlalchemy import text
 from db.engine import engine
 from datetime import datetime, timedelta
@@ -9,12 +9,17 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from dotenv import load_dotenv
 from utils import validate_currency
+from auth import verify_api_key
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 load_dotenv()
 
 log = logging.getLogger("hawala")
 router = APIRouter()
 last_refresh = None
+
+limiter = Limiter(key_func=get_remote_address)
 
 @router.get("/")
 def get_sentiment(currency: str = Query(default=None)):
@@ -24,6 +29,7 @@ def get_sentiment(currency: str = Query(default=None)):
     """
     params = {}
     if currency:
+        currency = validate_currency(currency)
         query += " WHERE currency = :currency"
         params["currency"] = currency
     query += " ORDER BY fetched_at DESC LIMIT 20"
@@ -34,7 +40,10 @@ def get_sentiment(currency: str = Query(default=None)):
     return [dict(r) for r in rows]
 
 @router.post("/refresh")
-def refresh_news(currency: str = Query(default='USD')):
+def refresh_news(
+    currency: str = Depends(validate_currency),
+    _auth: str = Depends(verify_api_key)
+):
     global last_refresh
     now = datetime.now()
     if last_refresh and now - last_refresh < timedelta(seconds=60):
@@ -51,6 +60,7 @@ def get_sentiment_summary(currency: str = Query(default=None)):
     query = "SELECT sentiment, COUNT(*) as count FROM news_sentiment"
     params = {}
     if currency:
+        currency = validate_currency(currency)
         query += " WHERE currency = :currency"
         params["currency"] = currency
     query += " GROUP BY sentiment"

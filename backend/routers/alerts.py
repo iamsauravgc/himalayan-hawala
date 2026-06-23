@@ -7,6 +7,7 @@ import os
 
 from dotenv import load_dotenv
 from utils import validate_currency, validate_lang
+from auth import verify_api_key
 
 load_dotenv()
 
@@ -56,7 +57,11 @@ def translate_to_nepali(text):
         return text
 
 @router.get("/generate")
-def generate_alert(currency: str = Depends(validate_currency), lang: str = Depends(validate_lang)):
+def generate_alert(
+    currency: str = Depends(validate_currency),
+    lang: str = Depends(validate_lang),
+    _auth: str = Depends(verify_api_key)
+):
     now = datetime.now()
     if currency in last_alert and now - last_alert[currency] < timedelta(seconds=30):
         raise HTTPException(status_code=429, detail="Please wait 30 seconds between alerts")

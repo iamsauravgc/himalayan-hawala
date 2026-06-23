@@ -5,6 +5,15 @@ import {
   Tooltip, ResponsiveContainer, Area, ReferenceLine
 } from "recharts";
 
+const isValidUrl = (string) => {
+  try {
+    const url = new URL(string);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+};
+
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     return (
@@ -32,21 +41,24 @@ export default function Dashboard() {
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    fetch(`${API}/api/rates/currencies`).then(r => r.json()).then(setCurrencies);
+    fetch(`${API}/api/rates/currencies`).then(r => r.json()).then(setCurrencies).catch(err => console.error("[API]", err));
     fetch(`${API}/api/sentiment/`).then(r => r.json()).then(d => {
       setNews(d.slice(0, 6));
       setLastUpdated(new Date());
-    });
+    }).catch(err => console.error("[API]", err));
   }, []);
 
   useEffect(() => {
-    fetch(`${API}/api/rates/live?currency=${currency}`).then(r => r.json()).then(setLiveRate);
-    fetch(`${API}/api/rates/history?currency=${currency}&days=90`).then(r => r.json()).then(setHistory);
-    fetch(`${API}/api/predict/?currency=${currency}`).then(r => r.json()).then(setPredictions);
-    fetch(`${API}/api/alerts/generate?currency=${currency}&lang=en`).then(r => r.json()).then(d => {
-      setAlert(d);
-    });
-    fetch(`${API}/api/predict/backtest?currency=${currency}`).then(r => r.json()).then(setBacktest);
+    const c = encodeURIComponent(currency);
+    fetch(`${API}/api/rates/live?currency=${c}`).then(r => r.json()).then(setLiveRate).catch(err => console.error("[API]", err));
+    fetch(`${API}/api/rates/history?currency=${c}&days=90`).then(r => r.json()).then(setHistory).catch(err => console.error("[API]", err));
+    fetch(`${API}/api/predict/?currency=${c}`).then(r => r.json()).then(setPredictions).catch(err => console.error("[API]", err));
+    fetch(`${API}/api/alerts/generate?currency=${c}&lang=en`).then(r => {
+      if (r.status === 429) return null;
+      if (!r.ok) throw new Error(r.statusText);
+      return r.json();
+    }).then(d => { if (d) setAlert(d); }).catch(err => console.error("[API]", err));
+    fetch(`${API}/api/predict/backtest?currency=${c}`).then(r => r.json()).then(setBacktest).catch(err => console.error("[API]", err));
   }, [currency]);
 
   const chartData = (() => {
@@ -274,11 +286,19 @@ export default function Dashboard() {
           </div>
           {news.map((item, i) => (
             <div className="news-row" key={i}>
-              <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>
-                <div style={{ cursor: 'pointer' }}>{item.headline}</div>
-              </a>
+              {isValidUrl(item.url) ? (
+                <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>
+                  <div style={{ cursor: 'pointer' }}>{item.headline}</div>
+                </a>
+              ) : (
+                <div style={{ color: 'inherit' }}>{item.headline}</div>
+              )}
               <div className="news-meta">
-                <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', textDecoration: 'none', fontSize: 11, fontWeight: 600 }}>{item.source} ↗</a>
+                {isValidUrl(item.url) ? (
+                  <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', textDecoration: 'none', fontSize: 11, fontWeight: 600 }}>{item.source} ↗</a>
+                ) : (
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted-strong)' }}>{item.source}</span>
+                )}
                 <span className={`pill ${item.sentiment}`}>{item.sentiment}</span>
               </div>
             </div>
