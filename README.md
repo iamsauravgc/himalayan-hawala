@@ -1,346 +1,138 @@
-# Himalayan Hawala - Remittance Intelligence Platform
+# Himalayan Hawala
 
-## Overview
+Remittance intelligence dashboard for Nepal's forex market. Combines NRB exchange rates, ML-based 7-day forecasts, and FinBERT news sentiment into a single-page dashboard.
 
-Himalayan Hawala is a sophisticated remittance intelligence platform that provides real-time currency forecasting and market sentiment analysis for Nepal's foreign exchange market. The platform combines machine learning, financial news analysis, and official NRB data to deliver actionable insights for remittance senders and financial service providers.
+---
 
-## ML Approach & Methodology
+## Tech Stack
 
-### Core Algorithm
-- **Model Type**: Random Forest Regressor for delta prediction
-- **Target Variable**: Daily currency rate changes (delta)
-- **Features**: 
-  - Temporal: Day of week, month
-  - Lag features: 1, 2, 3, and 7-day historical rates
-  - Moving averages: 3-day and 7-day rolling averages
-  - Rate changes: 1, 3, and 7-day deltas
-- **Prediction Horizon**: 7-day forward projections
-- **Confidence Intervals**: Dynamic margins expanding with forecast horizon
-
-### Training Process
-1. **Data Collection**: Historical exchange rates from NRB API (2+ years)
-2. **Feature Engineering**: Lag features, moving averages, and rate deltas
-3. **Model Training**: Random Forest with 200 trees, max depth 8
-4. **Validation**: 80/20 train-test split with chronological ordering
-5. **Deployment**: One model per currency (23+ major currencies supported)
-
-### Model Performance Metrics
-- **MAE**: Mean Absolute Error in NPR per day
-- **RMSE**: Root Mean Square Error for volatility assessment
-- **MAPE**: Mean Absolute Percentage Error for relative accuracy
-- **Direction Accuracy**: Correct prediction of rate movements
-- **Backtesting**: Simulated gains based on historical predictions
-
-## Data Sources
-
-### 1. Official Exchange Rate Data
-- **Provider**: Nepal Rastra Bank (NRB)
-- **API Endpoint**: `https://www.nrb.org.np/api/forex/v1`
-- **Frequency**: Daily updates
-- **Coverage**: 30+ currency pairs against NPR
-- **Quality**: Official central bank rates (buy/sell/mid)
-
-### 2. Financial News Intelligence
-- **Source**: NewsAPI.org
-- **Query**: "Nepal rupee exchange rate OR Nepali remittance NPR OR USD NPR forecast OR Federal Reserve interest rate Asia OR emerging market currency forex OR Nepal economy trade deficit"
-- **Processing**: FinBERT sentiment analysis
-- **Frequency**: Every 6 hours
-- **Languages**: English news with Nepali translation support
-
-### 3. ML Model Training Data
-- **Historical Range**: 730+ days (2+ years)
-- **Currencies**: Major global currencies (excluding INR)
-- **Minimum Records**: 100+ data points per currency
-- **Update Frequency**: Monthly retraining pipeline
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Next.js 16, React 19, Recharts, Tailwind CSS 4 |
+| Backend | FastAPI 0.137, Uvicorn |
+| Database | PostgreSQL, SQLAlchemy, psycopg2 |
+| ML | scikit-learn Random Forest, joblib |
+| External APIs | NRB Nepal (rates), NewsAPI (articles), HuggingFace (FinBERT sentiment) |
 
 ## System Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    FRONTEND (React/Next.js)                     │
-│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐  │
-│  │   Dashboard     │    │   Currency      │    │   Smart Alerts  │  │
-│  │   Charts        │    │   Selector      │    │   (AI-generated)│  │
-│  │   + Predictions │    │   + News Feed   │    │   + Backtest    │  │
-│  └─────────────────┘    └─────────────────┘    └─────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    API GATEWAY (FastAPI)                         │
-│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐  │
-│  │   Rates API     │    │   Predict API   │    │   Sentiment API │  │
-│  │   • Live Rates  │    │   • 7-day Forecast│  │   • News Feed   │  │
-│  │   • History     │    │   • Backtest     │    │   • Sentiment   │  │
-│  │   • Currencies  │    │   • Model Info   │    │   • Refresh     │  │
-│  └─────────────────┘    └─────────────────┘    └─────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    DATA PIPELINES                               │
-│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐  │
-│  │   Scheduler     │    │   NRB Fetch     │    │   News Fetch    │  │
-│  │   • Rates       │    │   • Daily       │    │   • FinBERT     │  │
-│  │   • News        │    │   • Historical  │    │   • Sentiment   │  │
-│  └─────────────────┘    └─────────────────┘    └─────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    DATA STORE (PostgreSQL)                       │
-│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐  │
-│  │ exchange_rates  │    │ rate_predictions │    │ news_sentiment  │  │
-│  │ • buy/sell/mid  │    │ • AI forecasts   │    │ • FinBERT       │  │
-│  │ • daily rates   │    │ • confidence     │    │ • sentiment     │  │
-│  └─────────────────┘    └─────────────────┘    └─────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    ML MODELS (Pickle)                             │
-│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐  │
-│  │ model_USD.pkl   │    │ model_EUR.pkl   │    │ model_JPY.pkl   │  │
-│  │ model_THB.pkl   │    │ model_GBP.pkl   │    │ ... (23+ total) │  │
-│  │ model_CNY.pkl   │    │ model_AUD.pkl   │    │                 │  │
-│  └─────────────────┘    └─────────────────┘    └─────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────┐
+│                         FRONTEND (Next.js)                            │
+│  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌────────────────┐  │
+│  │ Live Rate  │  │ 7-Day      │  │ Smart      │  │ News           │  │
+│  │ + Chart    │  │ Forecast   │  │ Alert      │  │ Feed + Refresh │  │
+│  │ + Backtest │  │ Projection │  │ (client-   │  │ (sentiment     │  │
+│  │            │  │ (BULLISH/  │  │  side)     │  │  pills)        │  │
+│  │            │  │  BEARISH)  │  │            │  │                │  │
+│  └────────────┘  └────────────┘  └────────────┘  └────────────────┘  │
+└──────────────────────────┬────────────────────────────────────────────┘
+                           │ HTTP (port 3000 → 8000)
+                           ▼
+┌───────────────────────────────────────────────────────────────────────┐
+│                        API GATEWAY (FastAPI)                          │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────┐  │
+│  │ /api/rates   │  │ /api/predict │  │ /api/sentiment│  │ /api/    │  │
+│  │ · live       │  │ · /          │  │ · /          │  │ alerts/  │  │
+│  │ · history    │  │ · currencies │  │ · summary    │  │ generate │  │
+│  │ · currencies │  │ · backtest   │  │ · refresh    │  │          │  │
+│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────┘  │
+└──────────────────────────┬────────────────────────────────────────────┘
+                           │
+              ┌────────────┼────────────┐
+              ▼            ▼            ▼
+┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+│ exchange_rates  │ │ rate_predictions│ │ news_sentiment  │
+│ · buy/sell/mid  │ │ · predicted_for │ │ · headline/url  │
+│ · currency/date │ │ · rate + conf   │ │ · sentiment     │
+│                 │ │ · created_at    │ │ · currency      │
+└─────────────────┘ └─────────────────┘ └─────────────────┘
+         │                   ▲
+         │                   │
+         ▼                   │
+┌─────────────────┐          │
+│  Scripts        │          │
+│ fetch_rates.py  ├──────────┘
+│ fetch_historical│
+│ fetch_news.py   │
+│ run_preds.py    │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────────────────────┐
+│ ML Models (21 Random Forests)   │
+│ model_USD.pkl ... model_THB.pkl │
+│ Trained by ml/train_model.py    │
+│ Features: lag_1/2/3/7, rolling  │
+│ 3/7, delta 1/3/7, day/mon      │
+└─────────────────────────────────┘
 ```
 
-## Key Features
+## Data Flow
 
-### 1. Real-Time Dashboard
-- **Live Rates**: Current buy/sell/mid rates with NPR precision
-- **7-Day Forecast**: AI-generated rate predictions with confidence bands
-- **Market Signal**: Bullish/Bearish/Neutral indicators
-- **Smart Alerts**: Actionable recommendations for remittance decisions
-
-### 2. Advanced Analytics
-- **Backtesting**: Historical model performance with simulated gains
-- **Sentiment Analysis**: Financial news sentiment scoring
-- **Multi-currency Support**: 23+ global currencies tracked
-- **Nepali Language**: Bilingual interface for accessibility
-
-### 3. Professional APIs
-- **RESTful API**: Full programmatic access
-- **Rate Limiting**: API key protection for production use
-- **CORS Support**: Cross-origin requests for web integration
-- **Security Headers**: Enterprise-grade security
-
-## Setup & Deployment
-
-### Prerequisites
-```bash
-# Backend
-python >= 3.8
-PostgreSQL >= 9.6
-Redis (optional, for caching)
-
-# Frontend
-Node.js >= 18
-npm >= 9
+```
+NRB API ──(daily)──> fetch_rates.py ──upsert──> exchange_rates table
+NewsAPI ──(6h)──> fetch_news.py ──FinBERT──> news_sentiment table
+exchange_rates ──> train_model.py ──> 21 model_*.pkl files
+model_*.pkl ──> run_predictions.py ──> rate_predictions table
+Frontend ──> FastAPI ──> PostgreSQL ──> JSON responses
 ```
 
-### Local Development
+## ML Methodology
+
+**Model:** Random Forest Regressor (200 trees, max_depth=8) predicting daily delta (next rate − current rate). One model per currency (21 total).
+
+**Features:** `day_of_week`, `month`, lags (1/2/3/7 days), rolling averages (3/7 days), deltas (1/3/7 days).
+
+**Prediction:** 7-day iterative forecast — each day's predicted rate feeds into the next. Confidence interval expands linearly: margin = `0.5 × (1 + day_index × 0.5)`. Training requires 100+ records per currency, 80/20 chronological split.
+
+**Backtest metrics:** MAE, RMSE, MAPE, Direction Accuracy (%), Simulated Gain (NPR) — computed by joining predictions against realized rates.
+
+## API Endpoints
+
+| Method | Path | Params | Description |
+|--------|------|--------|-------------|
+| GET | `/` | — | Health check |
+| GET | `/api/rates/currencies` | — | All tracked currency codes (excl. INR) |
+| GET | `/api/rates/live` | `currency` | Latest buy/sell/mid rate |
+| GET | `/api/rates/history` | `currency`, `days` (1–365, default 90) | Historical mid rates |
+| GET | `/api/predict/` | `currency` | 7-day forecast with confidence bands |
+| GET | `/api/predict/currencies` | — | Currencies with predictions |
+| GET | `/api/predict/backtest` | `currency` | Model accuracy: MAE, RMSE, direction %, simulated gain |
+| GET | `/api/sentiment/` | `currency` (optional) | Latest 20 news articles with sentiment |
+| GET | `/api/sentiment/summary` | `currency` (optional) | Sentiment breakdown + BULLISH/BEARISH/NEUTRAL signal |
+| POST | `/api/sentiment/refresh` | `currency` | Fetch fresh news (60s rate limit per currency) |
+| GET | `/api/alerts/generate` | `currency`, `lang` (en/ne) | Text recommendation (30s rate limit per currency) |
+
+## Local Setup
+
 ```bash
 # Backend
 cd backend
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+python -m venv venv; venv\Scripts\activate  # Windows
 pip install -r requirements.txt
-python -m db.migrate_001  # Run migrations
-python main.py  # Start API server
+python -m uvicorn main:app --reload --port 8000
 
 # Frontend
 cd frontend
 npm install
-npm run dev  # Start development server
+npm run dev
 ```
 
-### Production Deployment
-```bash
-# Environment Variables
-cp .env.example .env
-# Configure database, API keys, etc.
-
-# Database Migration
-python -m db.migrate_001
-
-# Data Collection
-python scripts/fetch_historical.py  # Initial data
-python scripts/fetch_rates.py  # Daily rates
-python scripts/fetch_news.py  # News collection
-
-# Model Training
-python ml/train_model.py  # Train ML models
-
-# Prediction Generation
-python scripts/run_predictions.py  # Generate forecasts
-
-# API Server
-uvicorn main:app --host 0.0.0.0 --port 8000
+**.env variables:**
+```
+DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
+NRB_API_URL=https://www.nrb.org.np/api/forex/v1
+NEWS_API_KEY=your_key
+HF_API_KEY=your_key
 ```
 
-### Docker Deployment
-```dockerfile
-# backend/Dockerfile
-FROM python:3.11-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-COPY . .
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+## Data Pipelines
 
-# frontend/Dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-COPY . .
-CMD ["npm", "start"]
-```
-
-## Model Training & Updates
-
-### Training Pipeline
-1. **Data Requirements**: 100+ records per currency
-2. **Feature Engineering**: Automatic lag features and moving averages
-3. **Model Selection**: Random Forest (tuned hyperparameters)
-4. **Validation**: Out-of-sample testing with MAE calculation
-5. **Persistence**: Pickle format for production deployment
-
-### Retraining Schedule
-- **Frequency**: Monthly or when new data available
-- **Trigger**: Data quality threshold check
-- **Process**: Automated via cron jobs
-- **Validation**: Performance comparison with previous models
-
-### Model Monitoring
-- **Drift Detection**: Feature distribution monitoring
-- **Performance Tracking**: MAE, RMSE, MAPE metrics
-- **Alerting**: Performance degradation notifications
-- **A/B Testing**: New model validation before deployment
-
-## API Documentation
-
-### Rates API (`/api/rates`)
-- **GET /live?currency=USD** - Current exchange rate
-- **GET /history?currency=USD&days=90** - Historical rates
-- **GET /currencies** - Supported currencies list
-
-### Predictions API (`/api/predict`)
-- **GET /** - 7-day forecast for currency
-- **GET /currencies** - Available prediction currencies
-- **GET /backtest?currency=USD** - Model performance metrics
-
-### Sentiment API (`/api/sentiment`)
-- **GET /** - Latest financial news
-- **GET /summary** - Market sentiment analysis
-- **POST /refresh** - Force news refresh (API key required)
-
-### Alerts API (`/api/alerts`)
-- **GET /generate?currency=USD&lang=en** - AI-generated recommendations
-- **GET /generate?currency=USD&lang=ne** - Nepali language recommendations
-
-## Monitoring & Evaluation
-
-### Key Metrics
-- **API Performance**: Response times, error rates
-- **Model Accuracy**: MAE, RMSE, MAPE, direction accuracy
-- **Data Quality**: Completeness, freshness, consistency
-- **User Engagement**: Dashboard interactions, alert usage
-
-### Alert Thresholds
-- **Model Performance**: MAE > 0.5 NPR triggers review
-- **Data Freshness**: Rates > 24 hours old
-- **API Usage**: Rate limiting alerts
-- **System Health**: Database connection failures
-
-### Reporting
-- **Daily**: Model performance summary
-- **Weekly**: Accuracy trends and alerts
-- **Monthly**: Comprehensive performance report
-- **Ad-hoc**: Custom analysis requests
-
-## Testing & Quality Assurance
-
-### Unit Tests
-- **API Endpoints**: FastAPI test clients
-- **ML Models**: Scikit-learn validation
-- **Database**: SQLAlchemy integration tests
-- **Sentiment**: FinBERT integration tests
-
-### Integration Tests
-- **End-to-End**: Full pipeline validation
-- **Load Testing**: API performance under stress
-- **Data Pipeline**: Complete data flow verification
-- **Model Deployment**: Model serving validation
-
-### CI/CD Pipeline
-- **Code Quality**: Linting, type checking
-- **Security**: Dependency vulnerability scanning
-- **Testing**: Automated test suite execution
-- **Deployment**: Containerized deployment
-
-## Contributing
-
-### Development Guidelines
-1. **Code Style**: Follow existing patterns and conventions
-2. **Testing**: Write comprehensive unit and integration tests
-3. **Documentation**: Update README and API docs
-4. **Performance**: Optimize database queries and ML inference
-
-### Model Contribution
-1. **Data Collection**: Ensure 100+ records per currency
-2. **Feature Engineering**: Maintain consistency with existing features
-3. **Validation**: Document model performance metrics
-4. **Testing**: Validate against historical data
-
-### Bug Reports
-1. **Reproduction Steps**: Clear, actionable steps
-2. **Expected Behavior**: What should happen
-3. **Actual Behavior**: What actually happens
-4. **Environment**: OS, versions, configuration
-
-## License
-
-MIT License - Free for commercial and non-commercial use.
-
-## Contact
-
-For support, questions, or collaboration:
-- **GitHub Issues**: Project repository
-- **Documentation**: API docs and user guides
-- **Community**: Developer discussions and forums
-
-## Future Enhancements
-
-### Planned Features
-1. **Multi-language Support**: Additional languages beyond English/Nepali
-2. **WebSocket Updates**: Real-time dashboard updates
-3. **Mobile App**: Native iOS/Android application
-4. **Enterprise API**: Advanced features for financial institutions
-
-### ML Improvements
-1. **Ensemble Models**: Combine multiple algorithms
-2. **Deep Learning**: Neural network alternatives
-3. **Time Series**: Advanced forecasting techniques
-4. **Reinforcement Learning**: Adaptive trading strategies
-
-## Performance Benchmarks
-
-### Typical Response Times
-- **Live Rates**: < 50ms
-- **Predictions**: < 100ms
-- **News Feed**: < 150ms
-- **Alerts**: < 200ms
-
-### Model Inference
-- **Prediction Generation**: < 10ms per currency
-- **Confidence Calculation**: < 5ms
-- **Memory Usage**: < 100MB per model
-- **CPU Usage**: < 10% on modern hardware
-
----
-
-This README provides a comprehensive overview of the Himalayan Hawala platform, covering its ML methodology, data sources, architecture, and deployment procedures. The platform combines sophisticated machine learning with real-time data processing to deliver actionable insights for Nepal's foreign exchange market.
+| Script | Trigger | What it does |
+|--------|---------|-------------|
+| `scripts/fetch_rates.py` | Backend startup + daily midnight | Pulls latest NRB rates, upserts into `exchange_rates` |
+| `scripts/fetch_historical.py` | Manual (one-time) | Seeds 730 days of NRB history |
+| `scripts/fetch_news.py` | Backend startup + every 6h, or POST /refresh | Queries NewsAPI → FinBERT sentiment → `news_sentiment` |
+| `scripts/run_predictions.py` | Manual (after training) | Loads `.pkl` models, generates 7-day predictions per currency |
+| `ml/train_model.py` | Manual | Trains Random Forest per currency, saves `model_*.pkl` |

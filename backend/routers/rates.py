@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Query, Depends
+from fastapi import APIRouter, Query, Depends, HTTPException
 from sqlalchemy import text
 from db.engine import engine
 from utils import validate_currency
@@ -16,6 +16,8 @@ def get_live_rate(currency: str = Depends(validate_currency)):
             LIMIT 1
         """), {"currency": currency})
         row = result.mappings().fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail=f"No rate data found for {currency}")
     return dict(row)
 
 @router.get("/history")

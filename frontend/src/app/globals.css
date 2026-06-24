@@ -70,8 +70,9 @@ body { background: var(--canvas); color: var(--body); font-family: 'Inter', sans
 .alert-placeholder { padding: 16px 20px; font-size: 13px; color: var(--muted); line-height: 1.7; }
 
 .tooltip-box { background: var(--surface-elevated); border-radius: 6px; padding: 10px 14px; font-size: 12px; }
-.tooltip-box .t-label { color: var(--muted); font-size: 10px; margin-bottom: 4px; }
-.tooltip-box .t-value { font-family: 'JetBrains Mono', monospace; color: var(--primary); font-weight: 600; font-size: 15px; }
+.tooltip-box .t-label { color: var(--muted); font-size: 10px; margin-bottom: 6px; }
+.tooltip-box .t-row { font-family: 'JetBrains Mono', monospace; font-size: 12px; display: flex; align-items: center; gap: 6px; margin-top: 3px; }
+.tooltip-box .t-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
 
 .chart-legend { display: flex; gap: 20px; margin-bottom: 14px; font-size: 11px; color: var(--muted); align-items: center; }
 .chart-legend span { display: flex; align-items: center; gap: 6px; }

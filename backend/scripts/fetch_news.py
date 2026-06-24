@@ -62,17 +62,21 @@ def fetch_articles():
 
 def run_finbert(headline):
     api_key = os.getenv("HF_API_KEY")
-    r = requests.post(
-        "https://router.huggingface.co/hf-inference/models/ProsusAI/finbert",
-        headers={"Authorization": f"Bearer {api_key}"},
-        json={"inputs": headline}
-    )
-    r.raise_for_status()
-    result = r.json()
-    if isinstance(result, list) and len(result) > 0:
-        scores = result[0]
-        best = max(scores, key=lambda x: x['score'])
-        return best['label'], round(best['score'], 4)
+    try:
+        r = requests.post(
+            "https://router.huggingface.co/hf-inference/models/ProsusAI/finbert",
+            headers={"Authorization": f"Bearer {api_key}"},
+            json={"inputs": headline},
+            timeout=15
+        )
+        r.raise_for_status()
+        result = r.json()
+        if isinstance(result, list) and len(result) > 0:
+            scores = result[0]
+            best = max(scores, key=lambda x: x['score'])
+            return best['label'], round(best['score'], 4)
+    except Exception:
+        pass
     return "neutral", 0.5
 
 def store_articles(articles, currency='USD'):

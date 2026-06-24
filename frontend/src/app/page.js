@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Area, ReferenceLine
+  Tooltip, ResponsiveContainer, Area, ReferenceLine, Label
 } from "recharts";
 
 const isValidUrl = (string) => {
@@ -16,10 +16,13 @@ const isValidUrl = (string) => {
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
+    const actual = payload.find(p => p.dataKey === 'actual')?.value;
+    const predicted = payload.find(p => p.dataKey === 'predicted')?.value;
     return (
       <div className="tooltip-box">
         <div className="t-label">{label}</div>
-        <div className="t-value">{payload[0]?.value?.toFixed(2)} NPR</div>
+        {actual != null && <div className="t-row"><span className="t-dot" style={{background:'#FCD535'}} /> Actual: {actual.toFixed(2)} NPR</div>}
+        {predicted != null && <div className="t-row"><span className="t-dot" style={{background:'#0ecb81'}} /> Forecast: {predicted.toFixed(2)} NPR</div>}
       </div>
     );
   }
@@ -42,24 +45,34 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetch(`${API}/api/rates/currencies`).then(r => r.json()).then(setCurrencies).catch(err => console.error("[API]", err));
-    fetch(`${API}/api/sentiment/`).then(r => r.json()).then(d => {
-      setNews(d.slice(0, 6));
-      setLastUpdated(new Date());
-    }).catch(err => console.error("[API]", err));
   }, []);
 
   useEffect(() => {
     const c = encodeURIComponent(currency);
-    fetch(`${API}/api/rates/live?currency=${c}`).then(r => r.json()).then(setLiveRate).catch(err => console.error("[API]", err));
-    fetch(`${API}/api/rates/history?currency=${c}&days=90`).then(r => r.json()).then(setHistory).catch(err => console.error("[API]", err));
-    fetch(`${API}/api/predict/?currency=${c}`).then(r => r.json()).then(setPredictions).catch(err => console.error("[API]", err));
-    fetch(`${API}/api/alerts/generate?currency=${c}&lang=en`).then(r => {
-      if (r.status === 429) return null;
-      if (!r.ok) throw new Error(r.statusText);
-      return r.json();
-    }).then(d => { if (d) setAlert(d); }).catch(err => console.error("[API]", err));
-    fetch(`${API}/api/predict/backtest?currency=${c}`).then(r => r.json()).then(setBacktest).catch(err => console.error("[API]", err));
+    let cancelled = false;
+    fetch(`${API}/api/rates/live?currency=${c}`).then(r => r.json()).then(d => { if (!cancelled) setLiveRate(d); }).catch(err => { if (!cancelled) console.error("[API] /rates/live", err); });
+    fetch(`${API}/api/rates/history?currency=${c}&days=90`).then(r => r.json()).then(d => { if (!cancelled) setHistory(d); }).catch(err => { if (!cancelled) console.error("[API] /rates/history", err); });
+    fetch(`${API}/api/predict/?currency=${c}`).then(r => r.json()).then(d => { if (!cancelled) setPredictions(d); }).catch(err => { if (!cancelled) console.error("[API] /predict", err); });
+    fetch(`${API}/api/predict/backtest?currency=${c}`).then(r => r.json()).then(d => { if (!cancelled) setBacktest(d); }).catch(err => { if (!cancelled) console.error("[API] /predict/backtest", err); });
+    fetch(`${API}/api/sentiment/?currency=${c}`).then(r => r.json()).then(d => { if (!cancelled) { setNews(d.slice(0, 6)); setLastUpdated(new Date()); } }).catch(err => { if (!cancelled) console.error("[API] /sentiment", err); });
+    return () => { cancelled = true; };
   }, [currency]);
+
+  useEffect(() => {
+    if (!liveRate || predictions.length < 2) return;
+    const midRate = parseFloat(liveRate.mid_rate);
+    const preds = predictions.map(p => parseFloat(p.predicted_rate));
+    const trend = preds[preds.length - 1] - preds[0];
+    const posCount = news.filter(n => n.sentiment === 'positive').length;
+    const negCount = news.filter(n => n.sentiment === 'negative').length;
+    const signal = posCount > negCount ? "BULLISH" : negCount > posCount ? "BEARISH" : "NEUTRAL";
+    const direction = trend > 0 ? "rise" : "fall";
+    const action = trend > 0 ? "send money now" : "wait before sending";
+    const outlook = signal === "BULLISH" ? "positive market sentiment supports this outlook." : signal === "BEARISH" ? "cautious market sentiment suggests monitoring rates." : "market sentiment is neutral.";
+    setAlert({
+      alert: `The ${currency}/NPR rate is currently ${midRate.toFixed(2)} with an expected ${direction} of ${Math.abs(trend).toFixed(2)} NPR over the next 7 days. It is advisable to ${action}; ${outlook}`
+    });
+  }, [liveRate, predictions, news, currency]);
 
   const chartData = (() => {
     if (!history.length && !predictions.length) return [];
@@ -86,16 +99,22 @@ export default function Dashboard() {
   })();
 
   const trend = predictions.length >= 2
-    ? predictions[predictions.length - 1].predicted_rate - predictions[0].predicted_rate
+    ? parseFloat(predictions[predictions.length - 1].predicted_rate) - parseFloat(predictions[0].predicted_rate)
     : 0;
 
   const refreshNews = async () => {
     setRefreshing(true);
-    await fetch(`${API}/api/sentiment/refresh`, { method: "POST" });
-    const newsRes = await fetch(`${API}/api/sentiment/`);
-    setNews((await newsRes.json()).slice(0, 6));
-    setLastUpdated(new Date());
-    setRefreshing(false);
+    try {
+      const c = encodeURIComponent(currency);
+      await fetch(`${API}/api/sentiment/refresh?currency=${c}`, { method: "POST" });
+      const newsRes = await fetch(`${API}/api/sentiment/?currency=${c}`);
+      setNews((await newsRes.json()).slice(0, 6));
+      setLastUpdated(new Date());
+    } catch (err) {
+      console.error("[API] /sentiment/refresh", err);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   return (
@@ -155,13 +174,13 @@ export default function Dashboard() {
             <div className="panel-header">
               <div>
                 <div className="panel-title">{currency}/NPR Rate</div>
-                <div className="panel-sub">90-day history + 7-day forecast</div>
+                <div className="panel-sub"><span style={{color:'#FCD535'}}>■</span> 90-day actual rates &nbsp; <span style={{color:'#0ecb81'}}>┈</span> 7-day ML forecast &nbsp; <span style={{color:'rgba(252,213,53,0.3)'}}>▨</span> confidence band</div>
               </div>
             </div>
             <div className="chart-legend">
-              <span><i className="legend-line solid" /> Actual</span>
-              <span><i className="legend-line dashed" /> Forecast</span>
-              <span><i className="legend-band" /> Confidence</span>
+              <span><i className="legend-line solid" style={{background:'#FCD535'}} /> Actual (History)</span>
+              <span><i className="legend-line dashed" style={{borderTopColor:'#0ecb81'}} /> Prediction (Forecast)</span>
+              <span><i className="legend-band" /> Confidence Interval</span>
             </div>
             <div className="chart-wrap">
               {chartData.length > 0 ? (
@@ -180,7 +199,9 @@ export default function Dashboard() {
                     <ReferenceLine
                       x={predictions.length > 0 ? predictions[0].predicted_for.slice(5) : ''}
                       stroke="#2b3139" strokeWidth={1} strokeDasharray="3 3"
-                    />
+                    >
+                      {predictions.length > 0 && <Label value=" FORECAST " position="top" fill="#0ecb81" fontSize={11} fontWeight={700} fontFamily="JetBrains Mono" />}
+                    </ReferenceLine>
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
