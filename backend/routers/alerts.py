@@ -22,38 +22,40 @@ Market sentiment: {sentiment_signal}
 
 Write a 2-sentence clear, actionable recommendation for someone sending money to Nepal."""
 
-    r = requests.post(
-        "https://router.huggingface.co/together/v1/chat/completions",
-        headers={"Authorization": f"Bearer {os.getenv('HF_API_KEY')}"},
-        json={
-            "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user", "content": prompt}
-            ]
-        }
-    )
-    r.raise_for_status()
-    result = r.json()
     try:
+        r = requests.post(
+            "https://router.huggingface.co/together/v1/chat/completions",
+            headers={"Authorization": f"Bearer {os.getenv('HF_API_KEY')}"},
+            json={
+                "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+                "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": prompt}
+                ]
+            },
+            timeout=15
+        )
+        r.raise_for_status()
+        result = r.json()
         return result['choices'][0]['message']['content'].strip()
-    except (KeyError, IndexError):
+    except (KeyError, IndexError, requests.RequestException):
         return "Rate analysis unavailable."
 
 def translate_to_nepali(text):
-    r = requests.post(
-        "https://router.huggingface.co/together/v1/chat/completions",
-        headers={"Authorization": f"Bearer {os.getenv('HF_API_KEY')}"},
-        json={
-            "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
-            "messages": [{"role": "user", "content": f"Translate this to Nepali, output only the translation: {text}"}]
-        }
-    )
-    r.raise_for_status()
-    result = r.json()
     try:
+        r = requests.post(
+            "https://router.huggingface.co/together/v1/chat/completions",
+            headers={"Authorization": f"Bearer {os.getenv('HF_API_KEY')}"},
+            json={
+                "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+                "messages": [{"role": "user", "content": f"Translate this to Nepali, output only the translation: {text}"}]
+            },
+            timeout=15
+        )
+        r.raise_for_status()
+        result = r.json()
         return result['choices'][0]['message']['content'].strip()
-    except (KeyError, IndexError):
+    except (KeyError, IndexError, requests.RequestException):
         return text
 
 @router.get("/generate")
