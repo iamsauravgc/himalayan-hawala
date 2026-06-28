@@ -3,11 +3,12 @@ from fastapi import APIRouter, Query, Depends
 from sqlalchemy import text
 from db.engine import engine
 from utils import validate_currency
+from auth import verify_api_key
 
 router = APIRouter()
 
 @router.get("/")
-def get_predictions(currency: str = Depends(validate_currency)):
+def get_predictions(currency: str = Depends(validate_currency), _auth: str = Depends(verify_api_key)):
     with engine.connect() as conn:
         result = conn.execute(text("""
             SELECT currency, predicted_for, predicted_rate, confidence_low, confidence_high
@@ -19,7 +20,7 @@ def get_predictions(currency: str = Depends(validate_currency)):
     return [dict(r) for r in rows]
 
 @router.get("/currencies")
-def list_prediction_currencies():
+def list_prediction_currencies(_auth: str = Depends(verify_api_key)):
     with engine.connect() as conn:
         result = conn.execute(text("""
             SELECT DISTINCT currency FROM rate_predictions
@@ -30,7 +31,7 @@ def list_prediction_currencies():
     return [r['currency'] for r in rows]
 
 @router.get("/backtest")
-def backtest(currency: str = Depends(validate_currency)):
+def backtest(currency: str = Depends(validate_currency), _auth: str = Depends(verify_api_key)):
     with engine.connect() as conn:
         rows = conn.execute(text("""
             SELECT

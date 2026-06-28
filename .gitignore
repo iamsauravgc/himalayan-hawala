@@ -13,6 +13,7 @@ backend/__pycache__/
 *.pyd
 
 # Environment files
+.env
 .env.local
 .env.production
 .env.development
@@ -36,7 +37,7 @@ logs/
 *.sqlite
 *.sqlite3
 
-# Model files (if they are large)
+# Model files
 *.pkl
 *.joblib
 
@@ -44,11 +45,9 @@ logs/
 *.tmp
 *.temp
 
-# Coverage directories
+# Coverage and build
 coverage/
 .nyc_output/
-
-# Build directories
 build/
 dist/
 
@@ -56,19 +55,13 @@ dist/
 .dockerignore
 Dockerfile*
 
-# Git
-.gitattributes
-.gitignore
-
 # Python specific
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-build/
 develop-eggs/
-dist/
 downloads/
 eggs/
 .eggs/
@@ -79,7 +72,6 @@ sdist/
 var/
 wheels/
 pip-wheel-metadata/
-share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
@@ -92,19 +84,6 @@ ENV/
 env.bak/
 venv.bak/
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Logs
-*.log
-
 # Test coverage
 .coverage
 htmlcov/
@@ -114,33 +93,3 @@ htmlcov/
 
 # pyenv
 .python-version
-
-# Environments
-.env
-.venv
-ENV/
-
-# IDE
-.vscode/
-.idea/
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Temporary files
-*.tmp
-*.temp
-
-# Build outputs
-frontend/.next/
-frontend/dist/
-backend/__pycache__/
-
-# Dependencies
-node_modules/
-frontend/node_modules/
-
-# Docker
-.dockerignore
-Dockerfile*

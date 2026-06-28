@@ -1,6 +1,6 @@
 import sys
 import os
-import pickle
+import joblib
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
@@ -122,8 +122,7 @@ def train_for_currency(currency):
     print(f"MAE on actual rate: {mae_rate:.4f} {currency}")
 
     model_path = os.path.join(os.path.dirname(__file__), f'model_{currency}.pkl')
-    with open(model_path, 'wb') as f:
-        pickle.dump({'model': model, 'features': features}, f)
+    joblib.dump({'model': model, 'features': features}, model_path)
     print(f"Model saved to {model_path}")
 
 def train():

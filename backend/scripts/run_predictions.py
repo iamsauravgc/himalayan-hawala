@@ -1,6 +1,6 @@
 import sys
 import os
-import pickle
+import joblib
 import pandas as pd
 import glob
 from datetime import timedelta
@@ -69,8 +69,7 @@ def run_predictions_for_currency(currency):
         print(f"No model found for {currency}, skipping.")
         return
 
-    with open(model_path, 'rb') as f:
-        saved = pickle.load(f)
+    saved = joblib.load(model_path)
     model = saved['model']
     features = saved['features']
 

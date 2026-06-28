@@ -1,10 +1,13 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 from db.engine import engine
 from datetime import datetime, timedelta
 
 from utils import validate_currency, validate_lang
+from auth import verify_api_key
 
+log = logging.getLogger("hawala")
 router = APIRouter()
 last_alert = {}
 
@@ -29,7 +32,8 @@ def translate_to_nepali(text):
 @router.get("/generate")
 def generate_alert(
     currency: str = Depends(validate_currency),
-    lang: str = Depends(validate_lang)
+    lang: str = Depends(validate_lang),
+    _auth: str = Depends(verify_api_key)
 ):
     try:
         now = datetime.now()
@@ -68,6 +72,8 @@ def generate_alert(
 
         alert_en = generate_alert_text(currency, live_rate, trend, sentiment_signal)
 
+        log.info("Alert generated for %s (lang=%s, trend=%.2f, sentiment=%s)", currency, lang, trend, sentiment_signal)
+
         if lang == "ne":
             alert_ne = translate_to_nepali(alert_en)
             return {"lang": "ne", "alert": alert_ne, "alert_en": alert_en, "currency": currency}
@@ -82,5 +88,5 @@ def generate_alert(
         }
     except HTTPException:
         raise
-    except Exception as e:
-        return {"lang": lang, "alert": "Alert generation unavailable.", "currency": currency, "error": str(e)}
+    except Exception:
+        return {"lang": lang, "alert": "Alert generation unavailable.", "currency": currency}
