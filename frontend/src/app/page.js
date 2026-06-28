@@ -30,6 +30,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_HEADERS = { "X-API-Key": process.env.NEXT_PUBLIC_API_KEY || "" };
 
 export default function Dashboard() {
   const [currency, setCurrency] = useState("USD");
@@ -44,17 +45,17 @@ export default function Dashboard() {
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    fetch(`${API}/api/rates/currencies`).then(r => r.json()).then(setCurrencies).catch(err => console.error("[API]", err));
+    fetch(`${API}/api/rates/currencies`, { headers: API_HEADERS }).then(r => r.json()).then(setCurrencies).catch(err => console.error("[API]", err));
   }, []);
 
   useEffect(() => {
     const c = encodeURIComponent(currency);
     let cancelled = false;
-    fetch(`${API}/api/rates/live?currency=${c}`).then(r => r.json()).then(d => { if (!cancelled) setLiveRate(d); }).catch(err => { if (!cancelled) console.error("[API] /rates/live", err); });
-    fetch(`${API}/api/rates/history?currency=${c}&days=90`).then(r => r.json()).then(d => { if (!cancelled) setHistory(d); }).catch(err => { if (!cancelled) console.error("[API] /rates/history", err); });
-    fetch(`${API}/api/predict/?currency=${c}`).then(r => r.json()).then(d => { if (!cancelled) setPredictions(d); }).catch(err => { if (!cancelled) console.error("[API] /predict", err); });
-    fetch(`${API}/api/predict/backtest?currency=${c}`).then(r => r.json()).then(d => { if (!cancelled) setBacktest(d); }).catch(err => { if (!cancelled) console.error("[API] /predict/backtest", err); });
-    fetch(`${API}/api/sentiment/?currency=${c}`).then(r => r.json()).then(d => { if (!cancelled) { setNews(d.slice(0, 6)); setLastUpdated(new Date()); } }).catch(err => { if (!cancelled) console.error("[API] /sentiment", err); });
+    fetch(`${API}/api/rates/live?currency=${c}`, { headers: API_HEADERS }).then(r => r.json()).then(d => { if (!cancelled) setLiveRate(d); }).catch(err => { if (!cancelled) console.error("[API] /rates/live", err); });
+    fetch(`${API}/api/rates/history?currency=${c}&days=90`, { headers: API_HEADERS }).then(r => r.json()).then(d => { if (!cancelled) setHistory(d); }).catch(err => { if (!cancelled) console.error("[API] /rates/history", err); });
+    fetch(`${API}/api/predict/?currency=${c}`, { headers: API_HEADERS }).then(r => r.json()).then(d => { if (!cancelled) setPredictions(d); }).catch(err => { if (!cancelled) console.error("[API] /predict", err); });
+    fetch(`${API}/api/predict/backtest?currency=${c}`, { headers: API_HEADERS }).then(r => r.json()).then(d => { if (!cancelled) setBacktest(d); }).catch(err => { if (!cancelled) console.error("[API] /predict/backtest", err); });
+    fetch(`${API}/api/sentiment/?currency=${c}`, { headers: API_HEADERS }).then(r => r.json()).then(d => { if (!cancelled) { setNews(d.slice(0, 6)); setLastUpdated(new Date()); } }).catch(err => { if (!cancelled) console.error("[API] /sentiment", err); });
     return () => { cancelled = true; };
   }, [currency]);
 
@@ -106,8 +107,8 @@ export default function Dashboard() {
     setRefreshing(true);
     try {
       const c = encodeURIComponent(currency);
-      await fetch(`${API}/api/sentiment/refresh?currency=${c}`, { method: "POST" });
-      const newsRes = await fetch(`${API}/api/sentiment/?currency=${c}`);
+      await fetch(`${API}/api/sentiment/refresh?currency=${c}`, { method: "POST", headers: API_HEADERS });
+      const newsRes = await fetch(`${API}/api/sentiment/?currency=${c}`, { headers: API_HEADERS });
       setNews((await newsRes.json()).slice(0, 6));
       setLastUpdated(new Date());
     } catch (err) {
