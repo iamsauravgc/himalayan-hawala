@@ -10,10 +10,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-NRB_API_URL = os.getenv("NRB_API_URL")
 
 def fetch_chunk(from_date, to_date):
-    url = f"{NRB_API_URL}/rates?from={from_date}&to={to_date}&per_page=100&page=1"
+    nrb_api_url = os.getenv("NRB_API_URL")
+    if not nrb_api_url:
+        print("ERROR: NRB_API_URL environment variable is not set")
+        return []
+    url = f"{nrb_api_url}/rates?from={from_date}&to={to_date}&per_page=100&page=1"
     r = requests.get(url)
     data = r.json()
     return data.get("data", {}).get("payload", []) or []

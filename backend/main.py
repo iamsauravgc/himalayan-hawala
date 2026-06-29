@@ -9,7 +9,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
-from routers import rates, predict, sentiment, alerts
+from routers import rates, predict, sentiment, alerts, seed
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(levelname)s: %(message)s")
 log = logging.getLogger("hawala")
@@ -119,6 +119,7 @@ app.include_router(rates.router, prefix="/api/rates", tags=["rates"])
 app.include_router(predict.router, prefix="/api/predict", tags=["predict"])
 app.include_router(sentiment.router, prefix="/api/sentiment", tags=["sentiment"]) 
 app.include_router(alerts.router, prefix="/api/alerts", tags=["alerts"])
+app.include_router(seed.router, prefix="/api", tags=["seed"])
 
 @app.get("/api/health")
 def health():
