@@ -15,6 +15,9 @@ EVERYTHING_QUERY = "Nepal rupee exchange rate OR Nepali remittance NPR OR USD NP
 def fetch_articles():
     articles = []
     api_key = os.getenv("NEWS_API_KEY")
+    if not api_key:
+        print("ERROR: NEWS_API_KEY environment variable is not set")
+        return []
 
     r = requests.get(
         "https://newsapi.org/v2/everything",
@@ -62,6 +65,9 @@ def fetch_articles():
 
 def run_finbert(headline):
     api_key = os.getenv("HF_API_KEY")
+    if not api_key:
+        print("ERROR: HF_API_KEY environment variable is not set")
+        return "neutral", 0.5
     try:
         r = requests.post(
             "https://router.huggingface.co/hf-inference/models/ProsusAI/finbert",

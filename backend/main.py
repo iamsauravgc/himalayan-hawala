@@ -64,8 +64,23 @@ async def run_news_scheduler():
             log.error("News scheduled fetch failed: %s", e)
 
 
+REQUIRED_ENV_VARS = [
+    "DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD",
+    "NRB_API_URL", "NEWS_API_KEY", "HF_API_KEY",
+    "CORS_ORIGINS", "API_AUTH_TOKEN",
+]
+
+def check_env():
+    missing = [v for v in REQUIRED_ENV_VARS if not os.getenv(v)]
+    if missing:
+        log.warning("Missing environment variables: %s", ", ".join(missing))
+    else:
+        log.info("All required environment variables are set")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    check_env()
     task_rates = asyncio.create_task(run_rates_scheduler())
     task_news = asyncio.create_task(run_news_scheduler())
     yield
@@ -104,6 +119,16 @@ app.include_router(rates.router, prefix="/api/rates", tags=["rates"])
 app.include_router(predict.router, prefix="/api/predict", tags=["predict"])
 app.include_router(sentiment.router, prefix="/api/sentiment", tags=["sentiment"]) 
 app.include_router(alerts.router, prefix="/api/alerts", tags=["alerts"])
+
+@app.get("/api/health")
+def health():
+    missing = [v for v in REQUIRED_ENV_VARS if not os.getenv(v)]
+    return {
+        "status": "ok",
+        "missing_env_vars": missing,
+        "env_ok": len(missing) == 0,
+    }
+
 
 @app.get("/")
 def root():

@@ -9,11 +9,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-NRB_API_URL = os.getenv("NRB_API_URL")
 
 def fetch_and_store_rates():
+    nrb_api_url = os.getenv("NRB_API_URL")
+    if not nrb_api_url:
+        print("ERROR: NRB_API_URL environment variable is not set")
+        return
+
     today = date.today().strftime("%Y-%m-%d")
-    url = f"{NRB_API_URL}/rates?from={today}&to={today}&per_page=1&page=1"
+    url = f"{nrb_api_url}/rates?from={today}&to={today}&per_page=1&page=1"
     
     response = requests.get(url)
     response.raise_for_status()
