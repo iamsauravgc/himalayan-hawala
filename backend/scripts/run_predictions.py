@@ -135,5 +135,95 @@ def run_predictions():
     for currency in currencies:
         run_predictions_for_currency(currency)
 
+
+def load_currency_data_upto(currency, cutoff):
+    engine = get_engine()
+    query = """
+        SELECT mid_rate, recorded_at 
+        FROM exchange_rates 
+        WHERE currency = %(currency)s
+        AND mid_rate IS NOT NULL
+        AND recorded_at < %(cutoff)s
+        ORDER BY recorded_at ASC
+    """
+    df = pd.read_sql(query, engine, params={"currency": currency, "cutoff": cutoff})
+    df['recorded_at'] = pd.to_datetime(df['recorded_at'])
+    df = df.drop_duplicates(subset='recorded_at').sort_values('recorded_at')
+    df = df.set_index('recorded_at').resample('D').ffill().reset_index()
+    return df
+
+
+def run_backtest_for_currency(currency, cutoff_date):
+    model_path = os.path.join(ML_DIR, f'model_{currency}.pkl')
+    if not os.path.exists(model_path):
+        return 0
+
+    saved = joblib.load(model_path)
+    model = saved['model']
+    features_list = saved['features']
+
+    df = load_currency_data_upto(currency, cutoff_date)
+    if len(df) < 7:
+        return 0
+
+    predictions = []
+    current_rate = df['mid_rate'].iloc[-1]
+
+    for i in range(7):
+        df = make_features(df)
+        last_row = df.iloc[[-1]][features_list]
+        delta = model.predict(last_row)[0]
+        next_rate = round(current_rate + delta, 4)
+        next_date = df['recorded_at'].iloc[-1] + timedelta(days=1)
+
+        predictions.append({
+            'date': next_date,
+            'rate': next_rate,
+        })
+
+        new_row = pd.DataFrame([{
+            'recorded_at': next_date,
+            'mid_rate': next_rate
+        }])
+        df = pd.concat([df, new_row], ignore_index=True)
+        current_rate = next_rate
+
+    conn = get_connection()
+    cur = conn.cursor()
+    count = 0
+    for p in predictions:
+        cur.execute("""
+            INSERT INTO rate_predictions (currency, predicted_for, predicted_rate)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (currency, predicted_for) DO NOTHING
+        """, (currency, p['date'].date(), float(p['rate'])))
+        count += 1
+
+    conn.commit()
+    cur.close()
+    conn.close()
+    return count
+
+
+def generate_backtest_predictions():
+    currencies = get_available_models()
+    if not currencies:
+        print("No models found for backtest predictions.")
+        return
+
+    from datetime import date, timedelta as td
+    today = date.today()
+    cutoffs = [today - td(days=d) for d in [30, 25, 20, 15, 10, 5]]
+
+    total = 0
+    for currency in currencies:
+        for cutoff in cutoffs:
+            count = run_backtest_for_currency(currency, cutoff)
+            total += count
+            print(f"Backtest {currency} from {cutoff}: {count} predictions")
+
+    print(f"\nTotal backtest predictions stored: {total}")
+
+
 if __name__ == "__main__":
     run_predictions()

@@ -23,7 +23,7 @@ def _run_seed():
     from scripts.fetch_rates import fetch_and_store_rates
     from scripts.fetch_historical import fetch_historical
     from scripts.fetch_news import fetch_articles, store_articles
-    from scripts.run_predictions import run_predictions
+    from scripts.run_predictions import run_predictions, generate_backtest_predictions
 
     log.info("SEED: Clearing old data...")
     try:
@@ -79,6 +79,16 @@ def _run_seed():
     except Exception as e:
         results["predictions"] = f"error: {e}"
         log.error("SEED: Predictions failed: %s", e)
+    _seed_status["results"] = results
+
+    log.info("SEED: Generating backtest predictions...")
+    try:
+        generate_backtest_predictions()
+        results["backtest_predictions"] = "ok"
+        log.info("SEED: Backtest predictions done")
+    except Exception as e:
+        results["backtest_predictions"] = f"error: {e}"
+        log.error("SEED: Backtest predictions failed: %s", e)
     _seed_status["results"] = results
 
     log.info("SEED: Fetching news...")
