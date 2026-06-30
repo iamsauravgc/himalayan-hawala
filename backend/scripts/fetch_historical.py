@@ -51,10 +51,10 @@ def fetch_historical():
                 mid = round((float(buy) + float(sell)) / 2, 4)
 
                 cur.execute("""
-                    INSERT INTO exchange_rates (currency, buy_rate, sell_rate, mid_rate, recorded_at)
-                    VALUES (%s, %s, %s, %s, %s)
-                    ON CONFLICT DO NOTHING
-                """, (currency, buy, sell, mid, day_date))
+                    INSERT INTO exchange_rates (currency, buy_rate, sell_rate, mid_rate, rate_date, recorded_at)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (currency, rate_date) DO NOTHING
+                """, (currency, buy, sell, mid, day_date, day_date))
                 count += 1
 
         chunk_start = chunk_end + timedelta(days=1)

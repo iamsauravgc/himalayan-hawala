@@ -13,10 +13,26 @@ router = APIRouter()
 def run_seed():
     results = {}
 
+    from db.engine import engine
+    from sqlalchemy import text as sql_text
+
     from scripts.fetch_rates import fetch_and_store_rates
     from scripts.fetch_historical import fetch_historical
     from scripts.fetch_news import fetch_articles, store_articles
     from scripts.run_predictions import run_predictions
+
+    log.info("SEED: Clearing old data...")
+    try:
+        with engine.connect() as conn:
+            conn.execute(sql_text("DELETE FROM rate_predictions"))
+            conn.execute(sql_text("DELETE FROM exchange_rates"))
+            conn.execute(sql_text("DELETE FROM news_sentiment"))
+            conn.commit()
+        results["clear_data"] = "ok"
+        log.info("SEED: Old data cleared")
+    except Exception as e:
+        results["clear_data"] = f"error: {e}"
+        log.error("SEED: Failed to clear data: %s", e)
 
     log.info("SEED: Fetching historical rates (730 days)...")
     try:
@@ -73,5 +89,5 @@ def run_seed():
 def seed_database(_auth: str = Depends(verify_api_key)):
     log.info("SEED: Starting full database seed")
     results = run_seed()
-    all_ok = all(v == "ok" for v in results.values())
-    return {"status": "ok" if all_ok else "partial", "results": results}
+    has_errors = any(v.startswith("error") for v in results.values())
+    return {"status": "ok" if not has_errors else "partial", "results": results}
